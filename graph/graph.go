@@ -1,5 +1,5 @@
 package graph
 
-func main() string {
+func PrintGraph() string {
 	return "Hello World!"
 }
