@@ -11,10 +11,6 @@ import (
 
 var raw_data []byte
 
-const limited_discovery_query string = "https://libraries.io/api/search?api_key=3dc75447d3681ffc2d17517265765d23&page=1&per_page=2&platforms=NPM"
-
-const discovery_query string = "https://libraries.io/api/search?api_key=3dc75447d3681ffc2d17517265765d23&platforms=NPM"
-
 type CreatedTime time.Time
 
 func (ct *CreatedTime) UnmarshalJSON(b []byte) error {
@@ -72,8 +68,8 @@ type DiscoveryResponse struct {
 	Versions []Version `json:versions`
 }
 
-func Ingest() []DiscoveryResponse {
-	raw_data = request(limited_discovery_query)
+func Ingest(query string) []DiscoveryResponse {
+	raw_data = request(query)
 	var arr []DiscoveryResponse
 	if err := json.Unmarshal(raw_data, &arr); err != nil {
 		panic(err)
