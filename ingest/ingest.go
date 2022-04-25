@@ -63,9 +63,14 @@ type PackageInfo struct {
 }
 
 type VersionDependencies struct {
-	Name         string `json:name`
-	Version      string `json:dependencies_for_version`
+	Name         string
+	Version      string
 	Dependencies []Dependency
+}
+
+type VersionInfo struct {
+	Dependencies    map[string]interface{} `json:dependencies`
+	DevDependencies map[string]interface{} `json:devDependencies`
 }
 
 type Dependency struct {
@@ -73,51 +78,55 @@ type Dependency struct {
 	RequiredVersion string `json:requirements`
 }
 
-func Ingest(query string) *[]PackageInfo {
-	rawData := *request(query)
+func Ingest(query string) *[]VersionDependencies {
+	rawDataAddr, _ := request(query)
 	var arr []PackageInfo
-	if err := json.Unmarshal(rawData, &arr); err != nil {
+	if err := json.Unmarshal(*rawDataAddr, &arr); err != nil {
 		panic(err)
 	}
-	return &arr
+	fmt.Println("Got data from input query")
+	fmt.Println("Processing...")
+	return process(&arr)
 	// fmt.Println(arr)
 }
 
-func request(req string) *[]byte {
-	fmt.Println("Starting request...")
+func request(req string) (*[]byte, *string) {
+	// fmt.Println("Starting request...")
 	resp, err := http.Get(req)
 	if err != nil {
 		panic(err)
 	}
 	defer resp.Body.Close()
-	fmt.Println("Response status:", resp.Status)
-	defer fmt.Println("Processing...")
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		panic(err)
 	}
 	// fmt.Println(string(body))
-	return &body
+	return &body, &resp.Status
 }
 
-func process(inputAddr *[]PackageInfo, platform string) *[]VersionDependencies {
+// TODO: parse NPMJS registry output properly
+func process(inputAddr *[]PackageInfo) *[]VersionDependencies {
 	var result []VersionDependencies
 
-	for i, p := range *inputAddr {
-		i += 1
+	for _, p := range *inputAddr {
 		name, versionsAddr := p.Name, &p.Versions
-		for j, ver := range *versionsAddr {
-			j += 1
+		for _, ver := range *versionsAddr {
 			number := ver.Number
-			currentURL := fmt.Sprintf("https://libraries.io/api/%s/%s/%s/dependencies?api_key=3dc75447d3681ffc2d17517265765d23", platform, name, number)
+			currentURL := fmt.Sprintf("registry.npmjs.org/%s/%s", name, number)
 
-			rawData := *request(currentURL)
-			var parsed VersionDependencies
+			rawDataAddr, statusAddr := request(currentURL)
+			var parsed VersionInfo
 
-			if err := json.Unmarshal(rawData, &parsed); err != nil {
+			if err := json.Unmarshal(*rawDataAddr, &parsed); err != nil {
+				status := *statusAddr
+				fmt.Println("Http status code was: ", status) // This will probably a rate-limit status code
 				panic(err)
 			}
-			result[i*j] = parsed
+
+			var dependencies []Dependency
+
+			result = append(result, VersionDependencies{name, number, dependencies})
 		}
 
 	}
