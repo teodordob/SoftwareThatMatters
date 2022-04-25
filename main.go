@@ -1,6 +1,9 @@
 package main
 
 import (
+	"fmt"
+	"runtime"
+
 	"github.com/AJMBrands/SoftwareThatMatters/ingest"
 )
 
@@ -10,7 +13,11 @@ const discovery_query string = "https://libraries.io/api/search?api_key=3dc75447
 
 var packagesAndVersions []ingest.DiscoveryResponse
 
+var m1, m2 runtime.MemStats
+
 func main() {
+	runtime.ReadMemStats(&m1)
 	packagesAndVersions = ingest.Ingest(discovery_query)
-	// fmt.Println(packagesAndVersions)
+	runtime.ReadMemStats(&m2)
+	fmt.Println(packagesAndVersions)
 }
