@@ -1,7 +1,11 @@
 package main
 
-import "fmt"
+import (
+	"github.com/AJMBrands/SoftwareThatMatters/ingest"
+)
+
+var packagesAndVersions []ingest.DiscoveryResponse
 
 func main() {
-	fmt.Println("Hello world!")
+	packagesAndVersions = ingest.Ingest()
 }
