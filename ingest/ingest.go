@@ -79,14 +79,14 @@ func Ingest(query string) []DiscoveryResponse {
 }
 
 func request(req string) []byte {
+	fmt.Println("Starting request...")
 	resp, err := http.Get(req)
 	if err != nil {
 		panic(err)
 	}
 	defer resp.Body.Close()
-	defer fmt.Println("Done!")
 	fmt.Println("Response status:", resp.Status)
-
+	defer fmt.Println("Processing...")
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		panic(err)

@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/AJMBrands/SoftwareThatMatters/ingest"
 )
 
@@ -14,5 +12,5 @@ var packagesAndVersions []ingest.DiscoveryResponse
 
 func main() {
 	packagesAndVersions = ingest.Ingest(discovery_query)
-	fmt.Println(packagesAndVersions)
+	// fmt.Println(packagesAndVersions)
 }
