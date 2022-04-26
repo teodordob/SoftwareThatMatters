@@ -108,30 +108,66 @@ func request(req string) (*[]byte, *string) {
 	return &body, &resp.Status
 }
 
-// TODO: parse NPMJS registry output properly
-func process(inputAddr *[]PackageInfo) *[]VersionDependencies {
+// TODO: Gracefully handle 404s and rate limits
+func process(input []PackageInfo) *[]VersionDependencies {
 	var result []VersionDependencies
 
-	for _, p := range *inputAddr {
+	for packageIdx, _ := range input {
+		p := &input[packageIdx]
 		name, versionsAddr := p.Name, &p.Versions
-		for _, ver := range *versionsAddr {
-			number := ver.Number
-			currentURL := fmt.Sprintf("registry.npmjs.org/%s/%s", name, number)
+		for verIdx, _ := range *versionsAddr {
+			number := (*versionsAddr)[verIdx].Number
+			currentURL := fmt.Sprintf("https://registry.npmjs.org/%s/%s", name, number)
 
 			rawDataAddr, statusAddr := request(currentURL)
 			var parsed VersionInfo
 
 			if err := json.Unmarshal(*rawDataAddr, &parsed); err != nil {
 				status := *statusAddr
-				fmt.Println("Http status code was: ", status) // This will probably a rate-limit status code
+				fmt.Println("Http status code was: ", status) // This will probably be a rate-limit status code
 				panic(err)
 			}
 
-			var dependencies []Dependency
-
-			result = append(result, VersionDependencies{name, number, dependencies})
+			deps, devDeps := parsed.Dependencies, parsed.DevDependencies
+			allDependencies := make([]Dependency, 0, len(deps)+len(devDeps))
+			for k, v := range deps {
+				allDependencies = append(allDependencies, Dependency{k, v.(string)})
+			}
+			for k, v := range devDeps {
+				allDependencies = append(allDependencies, Dependency{k, v.(string)})
+			}
+			versionDeps := VersionDependencies{name, number, allDependencies}
+			fmt.Println(versionDeps)
+			result = append(result, versionDeps)
 		}
 
 	}
+	return &result
+}
+
+func testProcess() *[]VersionDependencies {
+	var result []VersionDependencies
+	name, number := "babel", "0.0.1"
+	currentURL := fmt.Sprintf("https://registry.npmjs.org/%s/%s", name, number)
+
+	rawDataAddr, statusAddr := request(currentURL)
+	var parsed VersionInfo
+
+	if err := json.Unmarshal(*rawDataAddr, &parsed); err != nil {
+		status := *statusAddr
+		fmt.Println("Http status code was: ", status) // This will probably be a rate-limit status code
+		panic(err)
+	}
+
+	deps, devDeps := parsed.Dependencies, parsed.DevDependencies
+	allDependencies := make([]Dependency, 0, len(deps)+len(devDeps))
+	for k, v := range deps {
+		allDependencies = append(allDependencies, Dependency{k, v.(string)})
+	}
+	for k, v := range devDeps {
+		allDependencies = append(allDependencies, Dependency{k, v.(string)})
+	}
+
+	result = append(result, VersionDependencies{name, number, allDependencies})
 	return &result
 }

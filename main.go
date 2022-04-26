@@ -15,7 +15,7 @@ var m1, m2 runtime.MemStats
 
 func main() {
 	runtime.ReadMemStats(&m1)
-	ingestResultAddr := ingest.Ingest(limited_discovery_query)
+	ingestResultAddr := ingest.Ingest(discovery_query)
 	runtime.ReadMemStats(&m2)
 	fmt.Println(*ingestResultAddr)
 }
