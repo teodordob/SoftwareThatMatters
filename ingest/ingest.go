@@ -79,14 +79,17 @@ type Dependency struct {
 }
 
 func Ingest(query string) *[]VersionDependencies {
-	rawDataAddr, _ := request(query)
+	rawDataAddr, statusAddr := request(query)
 	var arr []PackageInfo
 	if err := json.Unmarshal(*rawDataAddr, &arr); err != nil {
+		status := *statusAddr
+		fmt.Println("Uh-oh, HTTP status was: ", status) // This will probably be a rate-limit status code
 		panic(err)
 	}
 	fmt.Println("Got data from input query")
 	fmt.Println("Processing...")
-	return process(&arr)
+	//return &arr
+	return process(arr)
 	// fmt.Println(arr)
 }
 
