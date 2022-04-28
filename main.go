@@ -1,7 +1,11 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/AJMBrands/SoftwareThatMatters/graph"
+)
 
 func main() {
 	fmt.Println("Hello world!")
+	graph.Test()
 }
