@@ -9,8 +9,10 @@ import (
 	"time"
 )
 
+// Type alias so we can create a custom parser for time since it wasn't parsed correctly natively
 type CreatedTime time.Time
 
+// Function required to implement the JSON parser interface for CreatedTime
 func (ct *CreatedTime) UnmarshalJSON(b []byte) error {
 	s := strings.Trim(string(b), "\"")
 	t, err := time.Parse(time.RFC3339Nano, s)
@@ -21,6 +23,7 @@ func (ct *CreatedTime) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// Function required to implement the JSON parser interface for CreatedTime
 func (ct CreatedTime) MarshalJSON() ([]byte, error) {
 	return json.Marshal(ct)
 }
