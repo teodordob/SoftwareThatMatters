@@ -81,11 +81,12 @@ type Dependency struct {
 	RequiredVersion string `json:requirements`
 }
 
+// Ingest live data
 func Ingest(query string) *[]VersionDependencies {
-	rawDataAddr, statusAddr := request(query)
+	rawDataAddr, requestAddr := request(query)
 	var arr []PackageInfo
 	if err := json.Unmarshal(*rawDataAddr, &arr); err != nil {
-		status := *statusAddr
+		status := requestAddr.Status
 		fmt.Println("Uh-oh, HTTP status was: ", status) // This will probably be a rate-limit status code
 		panic(err)
 	}
@@ -94,6 +95,25 @@ func Ingest(query string) *[]VersionDependencies {
 	//return &arr
 	return process(arr)
 	// fmt.Println(arr)
+}
+
+// Ingest (partially) offline data
+func IngestFile(file string) *[]VersionDependencies {
+	inputBytes, err := ioutil.ReadFile(file)
+
+	if err != nil {
+		fmt.Println("Something went wrong with reading the file:")
+		panic(err)
+	}
+	var arr []PackageInfo
+	if err := json.Unmarshal(inputBytes, &arr); err != nil {
+		fmt.Println("JSON parsing went wrong:")
+		panic(err)
+	}
+
+	fmt.Println("Got data from input")
+	fmt.Println("Processing...")
+	return process(arr)
 }
 
 func request(req string) (*[]byte, *http.Response) {
