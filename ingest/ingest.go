@@ -134,7 +134,7 @@ func request(req string) (*[]byte, *http.Response) {
 // TODO: Gracefully handle 404s and rate limits
 func process(input []PackageInfo) *[]VersionDependencies {
 	var result []VersionDependencies
-
+	inputLength := len(input)
 	for packageIdx, _ := range input {
 		p := &input[packageIdx]
 		name, versionsAddr := p.Name, &p.Versions
@@ -169,7 +169,7 @@ func process(input []PackageInfo) *[]VersionDependencies {
 			//fmt.Println(versionDeps)
 			result = append(result, versionDeps)
 		}
-
+		fmt.Printf("Package dependencies %d of %d fully parsed \n", packageIdx, inputLength)
 	}
 	return &result
 }
