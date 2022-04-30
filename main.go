@@ -11,12 +11,13 @@ const limited_discovery_query string = "https://libraries.io/api/search?api_key=
 
 const discovery_query string = "https://libraries.io/api/search?api_key=3dc75447d3681ffc2d17517265765d23&platforms=NPM&per_page=100"
 
-const offline_file string = "../data/100packages.json"
+const offline_file string = "data/100packages.json"
 
 var m1, m2 runtime.MemStats
 
 func main() {
 	runtime.ReadMemStats(&m1)
+	//ingestResultAddr := ingest.Ingest(limited_discovery_query)
 	ingestResultAddr := ingest.IngestFile(offline_file)
 	runtime.ReadMemStats(&m2)
 	fmt.Println(*ingestResultAddr)
