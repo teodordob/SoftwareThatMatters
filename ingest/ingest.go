@@ -147,7 +147,7 @@ func process(input []PackageInfo) *[]VersionDependencies {
 
 			if err := json.Unmarshal(*rawDataAddr, &parsed); err != nil {
 				statusCode := responseAddr.StatusCode
-				if statusCode == 404 { // This package info was not found, so try the next one
+				if statusCode == 404 { // This package's dependencies were not found, so try the next one
 					fmt.Printf("The following package's dependencies weren't found: \"%s\" version \"%s\"\n", name, number)
 					continue
 				} else {
