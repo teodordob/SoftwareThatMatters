@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+//TODO: Add method to put resolved dependencies back into JSON and output to file
+
 // Type alias so we can create a custom parser for time since it wasn't parsed correctly natively
 type CreatedTime time.Time
 
@@ -131,7 +133,6 @@ func request(req string) (*[]byte, *http.Response) {
 	return &body, resp
 }
 
-// TODO: Gracefully handle 404s and rate limits
 func process(input []PackageInfo) *[]VersionDependencies {
 	var result []VersionDependencies
 	inputLength := len(input)
@@ -169,7 +170,7 @@ func process(input []PackageInfo) *[]VersionDependencies {
 			//fmt.Println(versionDeps)
 			result = append(result, versionDeps)
 		}
-		fmt.Printf("Package dependencies %d of %d fully parsed \n", packageIdx, inputLength)
+		fmt.Printf("Package dependencies of %s (%d of %d) fully resolved \n", name, packageIdx+1, inputLength)
 	}
 	return &result
 }
