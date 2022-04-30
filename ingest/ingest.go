@@ -96,7 +96,7 @@ func Ingest(query string) *[]VersionDependencies {
 	// fmt.Println(arr)
 }
 
-func request(req string) (*[]byte, *string) {
+func request(req string) (*[]byte, *http.Response) {
 	// fmt.Println("Starting request...")
 	resp, err := http.Get(req)
 	if err != nil {
@@ -108,7 +108,7 @@ func request(req string) (*[]byte, *string) {
 		panic(err)
 	}
 	// fmt.Println(string(body))
-	return &body, &resp.Status
+	return &body, resp
 }
 
 // TODO: Gracefully handle 404s and rate limits
@@ -122,13 +122,19 @@ func process(input []PackageInfo) *[]VersionDependencies {
 			number := (*versionsAddr)[verIdx].Number
 			currentURL := fmt.Sprintf("https://registry.npmjs.org/%s/%s", name, number)
 
-			rawDataAddr, statusAddr := request(currentURL)
+			rawDataAddr, responseAddr := request(currentURL)
 			var parsed VersionInfo
 
 			if err := json.Unmarshal(*rawDataAddr, &parsed); err != nil {
-				status := *statusAddr
-				fmt.Println("Http status code was: ", status) // This will probably be a rate-limit status code
-				panic(err)
+				statusCode := responseAddr.StatusCode
+				if statusCode == 404 { // This package info was not found, so try the next one
+					fmt.Printf("The following package's dependency wasn't found: \"%s\" version \"%s\"\n", name, number)
+					continue
+				} else {
+					status := responseAddr.Status
+					fmt.Println("Http status code was: ", status) // This will probably be a rate-limit status code
+					panic(err)
+				}
 			}
 
 			deps, devDeps := parsed.Dependencies, parsed.DevDependencies
