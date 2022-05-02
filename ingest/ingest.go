@@ -127,14 +127,14 @@ func IngestFile(file string, outPath string) *[]VersionDependencies {
 	result := make(chan *[]VersionDependencies)
 	count := len(arr)
 	// TODO: Find smarter way to divide input into threads?
-	for i := count; i > 0; i-- {
+	for i := count - 1; i >= 0; i-- {
 		go func(i int) {
 			path := fmt.Sprintf("data/out/parsed_data_%d.csv", i)
 			result <- process(arr[i:i+1], path)
 		}(i)
 	}
 
-	for i := 0; i < count; i++ {
+	for i := 0; i < count-1; i++ {
 		<-result
 	}
 
@@ -169,7 +169,6 @@ func process(input []PackageInfo, outPath string) *[]VersionDependencies {
 	defer file.Close()
 
 	w := csv.NewWriter(file)
-	defer w.Flush()
 
 	for packageIdx := range input {
 		p := &input[packageIdx]
@@ -206,7 +205,12 @@ func process(input []PackageInfo, outPath string) *[]VersionDependencies {
 			//fmt.Println(versionDeps)
 			result = append(result, versionDeps)
 			writeOneToFile(&versionDeps, w)
+
+			if verIdx%10 == 0 { // Flush writer every 10 entries
+				w.Flush()
+			}
 		}
+		w.Flush() // Flush at the end to make sure there's no data left
 		fmt.Printf("Package dependencies of %s (%d of %d) fully resolved \n", name, packageIdx+1, inputLength)
 	}
 	return &result
