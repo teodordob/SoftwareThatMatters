@@ -92,7 +92,7 @@ func (d Dependency) String() string {
 }
 
 // Ingest live data
-func Ingest(query string) *[]VersionDependencies {
+func Ingest(query string, outPath string) *[]VersionDependencies {
 	rawDataAddr, requestAddr := request(query)
 	var arr []PackageInfo
 	if err := json.Unmarshal(*rawDataAddr, &arr); err != nil {
@@ -103,12 +103,12 @@ func Ingest(query string) *[]VersionDependencies {
 	fmt.Println("Got data from input query")
 	fmt.Println("Processing...")
 	//return &arr
-	return process(arr)
+	return process(arr, outPath)
 	// fmt.Println(arr)
 }
 
 // Ingest (partially) offline data
-func IngestFile(file string) *[]VersionDependencies {
+func IngestFile(file string, outPath string) *[]VersionDependencies {
 	inputBytes, err := ioutil.ReadFile(file)
 
 	if err != nil {
@@ -123,7 +123,7 @@ func IngestFile(file string) *[]VersionDependencies {
 
 	fmt.Println("Got data from input")
 	fmt.Println("Processing...")
-	return process(arr)
+	return process(arr, outPath)
 }
 
 func request(req string) (*[]byte, *http.Response) {
@@ -141,11 +141,11 @@ func request(req string) (*[]byte, *http.Response) {
 	return &body, resp
 }
 
-func process(input []PackageInfo) *[]VersionDependencies {
+func process(input []PackageInfo, outPath string) *[]VersionDependencies {
 	var result []VersionDependencies
 	inputLength := len(input)
 
-	file, err := os.OpenFile("data/out/result.csv", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(outPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 
 	if err != nil {
 		log.Fatal(err)
