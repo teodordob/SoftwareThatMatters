@@ -87,6 +87,10 @@ type Dependency struct {
 	RequiredVersion string
 }
 
+func (d Dependency) String() string {
+	return fmt.Sprintf("%s:%s", d.Name, d.RequiredVersion)
+}
+
 // Ingest live data
 func Ingest(query string) *[]VersionDependencies {
 	rawDataAddr, requestAddr := request(query)
@@ -150,6 +154,7 @@ func process(input []PackageInfo) *[]VersionDependencies {
 	defer file.Close()
 
 	w := csv.NewWriter(file)
+	defer w.Flush()
 
 	for packageIdx, _ := range input {
 		p := &input[packageIdx]
@@ -194,16 +199,21 @@ func process(input []PackageInfo) *[]VersionDependencies {
 
 func writeOneToFile(input *VersionDependencies, csvWriter *csv.Writer) {
 	name, version, date, deps := (*input).Name, (*input).Version, (*input).VersionCreated, (*input).Dependencies
+
 	var depsString string
 
-	if b, err := json.Marshal(deps); err != nil {
-		panic(err)
-	} else {
-		depsString = string(b[:])
+	l := len(deps)
+
+	for i, dep := range deps {
+		depsString += fmt.Sprint(dep)
+		if i < l-1 {
+			depsString += ","
+		}
 	}
+	depsString = fmt.Sprintf("[%s]", depsString)
 
 	if err := csvWriter.Write([]string{name, version, date.Format(time.RFC3339Nano), depsString}); err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 }
 
