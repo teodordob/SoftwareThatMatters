@@ -156,10 +156,10 @@ func process(input []PackageInfo, outPath string) *[]VersionDependencies {
 	w := csv.NewWriter(file)
 	defer w.Flush()
 
-	for packageIdx, _ := range input {
+	for packageIdx := range input {
 		p := &input[packageIdx]
 		name, versionsAddr := p.Name, &p.Versions
-		for verIdx, _ := range *versionsAddr {
+		for verIdx := range *versionsAddr {
 			version := (*versionsAddr)[verIdx]
 			number, date := version.Number, version.PublishedAt
 			currentURL := fmt.Sprintf("https://registry.npmjs.org/%s/%s", name, number)
