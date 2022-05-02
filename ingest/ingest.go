@@ -123,7 +123,25 @@ func IngestFile(file string, outPath string) *[]VersionDependencies {
 
 	fmt.Println("Got data from input")
 	fmt.Println("Processing...")
-	return process(arr, outPath)
+
+	result := make(chan *[]VersionDependencies)
+	count := len(arr)
+	// TODO: Find smarter way to divide input into threads?
+	for i := count; i > 0; i-- {
+		go func(i int) {
+			if i%10 == 0 {
+				fmt.Println("Spawned thread:", i)
+			}
+			path := fmt.Sprintf("data/out/parsed_data_%d.csv", i)
+			result <- process(arr[i:i+1], path)
+		}(i)
+	}
+
+	for i := 0; i < count; i++ {
+		<-result
+	}
+
+	return &[]VersionDependencies{}
 }
 
 func request(req string) (*[]byte, *http.Response) {
