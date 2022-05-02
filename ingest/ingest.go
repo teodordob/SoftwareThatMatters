@@ -140,6 +140,17 @@ func request(req string) (*[]byte, *http.Response) {
 func process(input []PackageInfo) *[]VersionDependencies {
 	var result []VersionDependencies
 	inputLength := len(input)
+
+	file, err := os.OpenFile("data/out/result.csv", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer file.Close()
+
+	w := csv.NewWriter(file)
+
 	for packageIdx, _ := range input {
 		p := &input[packageIdx]
 		name, versionsAddr := p.Name, &p.Versions
@@ -174,27 +185,15 @@ func process(input []PackageInfo) *[]VersionDependencies {
 			versionDeps := VersionDependencies{name, number, time.Time(date), allDependencies}
 			//fmt.Println(versionDeps)
 			result = append(result, versionDeps)
+			writeOneToFile(&versionDeps, w)
 		}
 		fmt.Printf("Package dependencies of %s (%d of %d) fully resolved \n", name, packageIdx+1, inputLength)
 	}
 	return &result
 }
 
-func writeOneToFile(input *VersionDependencies, outPath string) {
+func writeOneToFile(input *VersionDependencies, csvWriter *csv.Writer) {
 	name, version, date, deps := (*input).Name, (*input).Version, (*input).VersionCreated, (*input).Dependencies
-	fmt.Printf("Writing package dependencies of %s to file \n", name)
-
-	file, err := os.OpenFile(outPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	defer file.Close()
-
-	csvWriter := csv.NewWriter(file)
-	defer csvWriter.Flush()
-
 	var depsString string
 
 	if b, err := json.Marshal(deps); err != nil {
@@ -203,7 +202,7 @@ func writeOneToFile(input *VersionDependencies, outPath string) {
 		depsString = string(b[:])
 	}
 
-	if err = csvWriter.Write([]string{name, version, date.Format(time.RFC3339Nano), depsString}); err != nil {
+	if err := csvWriter.Write([]string{name, version, date.Format(time.RFC3339Nano), depsString}); err != nil {
 		panic(err)
 	}
 }
