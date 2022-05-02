@@ -207,7 +207,7 @@ func writeOneToFile(input *VersionDependencies, csvWriter *csv.Writer) {
 	for i, dep := range deps {
 		depsString += fmt.Sprint(dep)
 		if i < l-1 {
-			depsString += ","
+			depsString += ";"
 		}
 	}
 	depsString = fmt.Sprintf("[%s]", depsString)

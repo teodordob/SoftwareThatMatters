@@ -11,7 +11,7 @@ const limited_discovery_query string = "https://libraries.io/api/search?api_key=
 const discovery_query string = "https://libraries.io/api/search?api_key=3dc75447d3681ffc2d17517265765d23&platforms=NPM&per_page=20"
 
 const offline_file string = "data/100packages.json"
-const outPath string = "data/out/result.csv"
+const outPath string = "data/out/parsed_data.csv"
 
 var m1, m2 runtime.MemStats
 
@@ -19,6 +19,6 @@ var m1, m2 runtime.MemStats
 func main() {
 	runtime.ReadMemStats(&m1)
 	//ingestResultAddr := ingest.Ingest(limited_discovery_query)
-	ingest.Ingest(discovery_query, outPath)
+	ingest.Ingest(limited_discovery_query, outPath)
 	runtime.ReadMemStats(&m2)
 }
