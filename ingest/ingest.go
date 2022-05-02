@@ -1,10 +1,13 @@
 package ingest
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 )
@@ -68,9 +71,10 @@ type PackageInfo struct {
 }
 
 type VersionDependencies struct {
-	Name         string
-	Version      string
-	Dependencies []Dependency
+	Name           string
+	Version        string
+	VersionCreated time.Time
+	Dependencies   []Dependency
 }
 
 type VersionInfo struct {
@@ -79,8 +83,8 @@ type VersionInfo struct {
 }
 
 type Dependency struct {
-	Name            string `json:name`
-	RequiredVersion string `json:requirements`
+	Name            string
+	RequiredVersion string
 }
 
 // Ingest live data
@@ -140,7 +144,8 @@ func process(input []PackageInfo) *[]VersionDependencies {
 		p := &input[packageIdx]
 		name, versionsAddr := p.Name, &p.Versions
 		for verIdx, _ := range *versionsAddr {
-			number := (*versionsAddr)[verIdx].Number
+			version := (*versionsAddr)[verIdx]
+			number, date := version.Number, version.PublishedAt
 			currentURL := fmt.Sprintf("https://registry.npmjs.org/%s/%s", name, number)
 
 			rawDataAddr, responseAddr := request(currentURL)
@@ -166,7 +171,7 @@ func process(input []PackageInfo) *[]VersionDependencies {
 			for k, v := range devDeps {
 				allDependencies = append(allDependencies, Dependency{k, v.(string)})
 			}
-			versionDeps := VersionDependencies{name, number, allDependencies}
+			versionDeps := VersionDependencies{name, number, time.Time(date), allDependencies}
 			//fmt.Println(versionDeps)
 			result = append(result, versionDeps)
 		}
@@ -175,7 +180,35 @@ func process(input []PackageInfo) *[]VersionDependencies {
 	return &result
 }
 
-func testProcess() *[]VersionDependencies {
+func writeOneToFile(input *VersionDependencies, outPath string) {
+	name, version, date, deps := (*input).Name, (*input).Version, (*input).VersionCreated, (*input).Dependencies
+	fmt.Printf("Writing package dependencies of %s to file \n", name)
+
+	file, err := os.OpenFile(outPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer file.Close()
+
+	csvWriter := csv.NewWriter(file)
+	defer csvWriter.Flush()
+
+	var depsString string
+
+	if b, err := json.Marshal(deps); err != nil {
+		panic(err)
+	} else {
+		depsString = string(b[:])
+	}
+
+	if err = csvWriter.Write([]string{name, version, date.Format(time.RFC3339Nano), depsString}); err != nil {
+		panic(err)
+	}
+}
+
+/** func testProcess() *[]VersionDependencies {
 	var result []VersionDependencies
 	name, number := "babel", "0.0.1"
 	currentURL := fmt.Sprintf("https://registry.npmjs.org/%s/%s", name, number)
@@ -200,4 +233,4 @@ func testProcess() *[]VersionDependencies {
 
 	result = append(result, VersionDependencies{name, number, allDependencies})
 	return &result
-}
+} **/
