@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -114,6 +115,8 @@ func IngestFile(file string, outPathTemplate string) {
 }
 
 func ingestInternal(inputBytes []byte, outPathTemplate string) {
+	var wg sync.WaitGroup
+
 	var arr []PackageInfo
 	if err := json.Unmarshal(inputBytes, &arr); err != nil {
 		fmt.Println("JSON parsing went wrong:")
@@ -123,21 +126,19 @@ func ingestInternal(inputBytes []byte, outPathTemplate string) {
 	fmt.Println("Got data from input")
 	fmt.Println("Processing...")
 
-	result := make(chan *[]VersionDependencies)
-	count := len(arr)
+	// result := make(chan *[]VersionDependencies)
+	length := len(arr)
 	// TODO: Find smarter way to divide input into threads?
-	for i := count - 1; i >= 0; i-- {
+	for i := 0; i < length; i++ {
+		wg.Add(1)
 		go func(i int) {
-			path := fmt.Sprintf("data/out/parsed_data_%d.csv", i)
-			result <- process(arr[i:i+1], path)
+			defer wg.Done()
+			path := fmt.Sprintf(outPathTemplate, i)
+			process(arr[i:i+1], path)
 		}(i)
 	}
 
-	for i := 0; i < count-1; i++ {
-		<-result
-	}
-
-	return &[]VersionDependencies{}
+	wg.Wait() // Wait for all goroutines to be done
 }
 
 func request(req string) (*[]byte, *http.Response) {
