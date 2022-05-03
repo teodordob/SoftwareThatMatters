@@ -92,17 +92,17 @@ func (d Dependency) String() string {
 }
 
 // Ingest live data
-func Ingest(query string, outPath string) *[]VersionDependencies {
+func Ingest(query string, outPathTemplate string) {
 	rawDataAddr, requestAddr := request(query)
 
 	if statusCode := requestAddr.StatusCode; statusCode != 200 {
 		log.Fatalln("Uh-oh, HTTP status was: ", requestAddr.Status)
 	}
-	return ingestInternal(*rawDataAddr)
+	ingestInternal(*rawDataAddr, outPathTemplate)
 }
 
 // Ingest (partially) offline data
-func IngestFile(file string, outPath string) *[]VersionDependencies {
+func IngestFile(file string, outPathTemplate string) {
 	inputBytes, err := ioutil.ReadFile(file)
 
 	if err != nil {
@@ -110,10 +110,10 @@ func IngestFile(file string, outPath string) *[]VersionDependencies {
 		panic(err)
 	}
 
-	return ingestInternal(inputBytes)
+	ingestInternal(inputBytes, outPathTemplate)
 }
 
-func ingestInternal(inputBytes []byte) *[]VersionDependencies {
+func ingestInternal(inputBytes []byte, outPathTemplate string) {
 	var arr []PackageInfo
 	if err := json.Unmarshal(inputBytes, &arr); err != nil {
 		fmt.Println("JSON parsing went wrong:")
