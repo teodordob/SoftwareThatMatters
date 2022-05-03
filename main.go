@@ -11,7 +11,7 @@ const limited_discovery_query string = "https://libraries.io/api/search?api_key=
 const discovery_query string = "https://libraries.io/api/search?api_key=3dc75447d3681ffc2d17517265765d23&platforms=NPM&per_page=20"
 
 const offline_file string = "data/100packages.json"
-const outPathTemplate string = "data/out/parsed_data_%d_1.csv"
+const outPathTemplate string = "data/out/parsed_data_%d.csv"
 
 var m1, m2 runtime.MemStats
 
