@@ -12,6 +12,7 @@ const discovery_query string = "https://libraries.io/api/search?api_key=3dc75447
 
 const offline_file string = "data/100packages.json"
 const outPathTemplate string = "data/out/parsed_data_%d.csv"
+const versionPath string = "data/out/versions.csv"
 
 var m1, m2 runtime.MemStats
 

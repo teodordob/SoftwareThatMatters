@@ -11,6 +11,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	ccsv "github.com/tsak/concurrent-csv-writer"
 )
 
 //TODO: Add method to put resolved dependencies back into JSON and output to file
@@ -93,17 +95,17 @@ func (d Dependency) String() string {
 }
 
 // Ingest live data
-func Ingest(query string, outPathTemplate string) {
+func Ingest(query string, outPathTemplate, versionPath string) {
 	rawDataAddr, requestAddr := request(query)
 
 	if statusCode := requestAddr.StatusCode; statusCode != 200 {
 		log.Fatalln("Uh-oh, HTTP status was: ", requestAddr.Status)
 	}
-	ingestInternal(*rawDataAddr, outPathTemplate)
+	ingestInternal(*rawDataAddr, outPathTemplate, versionPath)
 }
 
 // Ingest (partially) offline data
-func IngestFile(file string, outPathTemplate string) {
+func IngestFile(file string, outPathTemplate, versionPath string) {
 	inputBytes, err := ioutil.ReadFile(file)
 
 	if err != nil {
@@ -111,10 +113,10 @@ func IngestFile(file string, outPathTemplate string) {
 		panic(err)
 	}
 
-	ingestInternal(inputBytes, outPathTemplate)
+	ingestInternal(inputBytes, outPathTemplate, versionPath)
 }
 
-func ingestInternal(inputBytes []byte, outPathTemplate string) {
+func ingestInternal(inputBytes []byte, outPathTemplate, versionPath string) {
 	var wg sync.WaitGroup
 
 	var arr []PackageInfo
@@ -124,6 +126,7 @@ func ingestInternal(inputBytes []byte, outPathTemplate string) {
 	}
 
 	fmt.Println("Got data from input")
+	versionPrinter(&arr, versionPath)
 	fmt.Println("Processing...")
 
 	// result := make(chan *[]VersionDependencies)
@@ -139,6 +142,38 @@ func ingestInternal(inputBytes []byte, outPathTemplate string) {
 	}
 
 	wg.Wait() // Wait for all goroutines to be done
+}
+
+func versionPrinter(input *[]PackageInfo, versionPath string) {
+	var wg sync.WaitGroup
+
+	csv, err := ccsv.NewCsvWriter(versionPath)
+
+	defer csv.Close()
+	defer wg.Wait()
+
+	if err != nil {
+		panic(fmt.Sprintln("Couldn't open ", versionPath))
+	}
+
+	for i, p := range *input {
+		wg.Add(1)
+		go func(i int, p PackageInfo) {
+			defer wg.Done()
+			printSinglePackage(&p, csv)
+		}(i, p)
+	}
+
+}
+
+func printSinglePackage(packageAddr *PackageInfo, writer *ccsv.CsvWriter) {
+	p := *packageAddr
+	name, versions := p.Name, p.Versions
+
+	for _, ver := range versions {
+		num, date := ver.Number, ver.PublishedAt
+		writer.Write([]string{name, num, time.Time(date).Format(time.RFC3339Nano)})
+	}
 }
 
 func request(req string) (*[]byte, *http.Response) {
@@ -236,6 +271,10 @@ func writeOneToFile(input *VersionDependencies, csvWriter *csv.Writer) {
 	}
 }
 
+// Resolve semantic versions in parsed data CSV files using date and semantic version constraints
+func ResolveVersions(versionPath string, parsedDepsPathTemplate string, outPathTemplate string) {
+
+}
 /** func testProcess() *[]VersionDependencies {
 	var result []VersionDependencies
 	name, number := "babel", "0.0.1"
