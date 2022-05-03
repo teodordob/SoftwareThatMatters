@@ -17,8 +17,8 @@ var m1, m2 runtime.MemStats
 
 //TODO: Make ingest process and file writing scalable
 func main() {
-	runtime.ReadMemStats(&m1)
+	runtime.ReadMemStats(&m1) // Reading memory stats for debug purposes
 	//ingestResultAddr := ingest.Ingest(limited_discovery_query)
-	ingest.Ingest(limited_discovery_query, outPath)
+	ingest.IngestFile(offline_file, outPath)
 	runtime.ReadMemStats(&m2)
 }
