@@ -170,13 +170,19 @@ func process(input []PackageInfo, outPath string) *[]VersionDependencies {
 
 	w := csv.NewWriter(file)
 
+	r := strings.NewReplacer(
+		":", "/",
+		".", "/",
+	)
+
 	for packageIdx := range input {
 		p := &input[packageIdx]
 		name, versionsAddr := p.Name, &p.Versions
+		nameUpdated := r.Replace(name)
 		for verIdx := range *versionsAddr {
 			version := (*versionsAddr)[verIdx]
 			number, date := version.Number, version.PublishedAt
-			currentURL := fmt.Sprintf("https://registry.npmjs.org/%s/%s", name, number)
+			currentURL := fmt.Sprintf("https://repo1.maven.org/maven2/%s/%s", nameUpdated, number)
 
 			rawDataAddr, responseAddr := request(currentURL)
 			var parsed VersionInfo
