@@ -179,10 +179,13 @@ func process(input []PackageInfo, outPath string) *[]VersionDependencies {
 		p := &input[packageIdx]
 		name, versionsAddr := p.Name, &p.Versions
 		nameUpdated := r.Replace(name)
+		namePomSplit := strings.Split(nameUpdated, "/")
+		namePom := namePomSplit[len(namePomSplit)-1]
 		for verIdx := range *versionsAddr {
 			version := (*versionsAddr)[verIdx]
 			number, date := version.Number, version.PublishedAt
-			currentURL := fmt.Sprintf("https://repo1.maven.org/maven2/%s/%s", nameUpdated, number)
+			finalPom := namePom + "-" + number + ".pom"
+			currentURL := fmt.Sprintf("https://repo1.maven.org/maven2/%s/%s/%s", nameUpdated, number, finalPom)
 
 			rawDataAddr, responseAddr := request(currentURL)
 			var parsed VersionInfo
