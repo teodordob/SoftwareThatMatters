@@ -1,9 +1,8 @@
 package main
 
 import (
-	"runtime"
-
 	"github.com/AJMBrands/SoftwareThatMatters/ingest"
+	"runtime"
 )
 
 const limited_discovery_query string = "https://libraries.io/api/search?api_key=3dc75447d3681ffc2d17517265765d23&page=1&per_page=1&platforms=MAVEN"

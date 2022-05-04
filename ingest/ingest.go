@@ -3,7 +3,9 @@ package ingest
 import (
 	"encoding/csv"
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
+	"github.com/vifraa/gopom"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -188,9 +190,9 @@ func process(input []PackageInfo, outPath string) *[]VersionDependencies {
 			currentURL := fmt.Sprintf("https://repo1.maven.org/maven2/%s/%s/%s", nameUpdated, number, finalPom)
 
 			rawDataAddr, responseAddr := request(currentURL)
-			var parsed VersionInfo
+			var parsed gopom.Project
 
-			if err := json.Unmarshal(*rawDataAddr, &parsed); err != nil {
+			if err := xml.Unmarshal(*rawDataAddr, &parsed); err != nil {
 				statusCode := responseAddr.StatusCode
 				if statusCode == 404 { // This package's dependencies were not found, so try the next one
 					fmt.Printf("The following package's dependencies weren't found: \"%s\" version \"%s\"\n", name, number)
@@ -202,12 +204,9 @@ func process(input []PackageInfo, outPath string) *[]VersionDependencies {
 				}
 			}
 
-			deps, devDeps := parsed.Dependencies, parsed.DevDependencies
-			allDependencies := make([]Dependency, 0, len(deps)+len(devDeps))
+			deps := parsed.Dependencies
+			allDependencies := make([]Dependency, 0, len(deps))
 			for k, v := range deps {
-				allDependencies = append(allDependencies, Dependency{k, v.(string)})
-			}
-			for k, v := range devDeps {
 				allDependencies = append(allDependencies, Dependency{k, v.(string)})
 			}
 			versionDeps := VersionDependencies{name, number, time.Time(date), allDependencies}
