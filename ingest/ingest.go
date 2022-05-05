@@ -15,6 +15,22 @@ import (
 	ccsv "github.com/tsak/concurrent-csv-writer"
 )
 
+type VersionData struct {
+	Version         string            `json:version`
+	DevDependencies map[string]string `json:devDependencies`
+	Dependencies    map[string]string `json:dependencies`
+}
+
+type Doc struct {
+	Name     string                 `json:name`
+	Versions map[string]VersionData `json:versions`
+	Time     map[string]CreatedTime `json:time`
+}
+
+type Entry struct {
+	Doc Doc `json:doc`
+}
+
 //TODO: Add method to put resolved dependencies back into JSON and output to file
 
 // Type alias so we can create a custom parser for time since it wasn't parsed correctly natively
@@ -273,8 +289,69 @@ func writeOneToFile(input *VersionDependencies, csvWriter *csv.Writer) {
 
 // Resolve semantic versions in parsed data CSV files using date and semantic version constraints
 func ResolveVersions(versionPath string, parsedDepsPathTemplate string, outPathTemplate string) {
+	//TODO: Find version that satisfies both of these requirements: Dependency satisfies semver constraints; Dependency was released before package
+}
+
+func StreamDecode(inPath string, outPath string) {
+	f, _ := os.Open(inPath)
+	dec := json.NewDecoder(f)
+
+	outFile, err := os.OpenFile(outPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer outFile.Close()
+	writer := csv.NewWriter(outFile)
+	// versionPath := strings.Replace(outPath, ".", ".versions.", 1)
+	// versionFile, err := os.OpenFile(versionPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+
+	// versionWriter := csv.NewWriter(versionFile)
+
+	// Read opening bracket
+	if _, err := dec.Token(); err != nil {
+		log.Fatal(err)
+	}
+
+	for dec.More() {
+		var e Entry
+
+		if err := dec.Decode(&e); err != nil {
+			log.Fatal(err)
+		}
+		timeStamps := e.Doc.Time
+
+		for number, vd := range e.Doc.Versions {
+			t := time.Time(timeStamps[number])
+			deps, devDeps := vd.Dependencies, vd.DevDependencies
+			allDependencies := make([]Dependency, 0, len(deps)+len(devDeps))
+			for k, v := range deps {
+				allDependencies = append(allDependencies, Dependency{k, v})
+			}
+			for k, v := range devDeps {
+				allDependencies = append(allDependencies, Dependency{k, v})
+			}
+
+			vd := VersionDependencies{e.Doc.Name, number, t, allDependencies}
+			writeOneToFile(&vd, writer) // Write dependencies to file
+			// versionWriter.Write([]string{e.Doc.Name, number}) // Write version to separate file
+		}
+		writer.Flush()
+		// versionWriter.Flush()
+		// fmt.Printf("Wrote dependencies of %s to file \n", e.Doc.Name)
+	}
+
+	// Read closing bracket
+	if _, err := dec.Token(); err != nil {
+		log.Fatal(err)
+	}
 
 }
+
 /** func testProcess() *[]VersionDependencies {
 	var result []VersionDependencies
 	name, number := "babel", "0.0.1"
