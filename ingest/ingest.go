@@ -292,11 +292,17 @@ func ResolveVersions(versionPath string, parsedDepsPathTemplate string, outPathT
 	//TODO: Find version that satisfies both of these requirements: Dependency satisfies semver constraints; Dependency was released before package
 }
 
+// Discard dependencies with absurdly long names "AAAAAAAAAA..."
+func tooLong(a, b string) bool {
+	const limit int = 10000
+	return len(a) > limit || len(b) > limit
+}
+
 func StreamDecode(inPath string, outPath string) {
 	f, _ := os.Open(inPath)
 	dec := json.NewDecoder(f)
 
-	outFile, err := os.OpenFile(outPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	outFile, err := os.OpenFile(outPath, os.O_CREATE|os.O_WRONLY, 0644)
 
 	if err != nil {
 		log.Fatal(err)
@@ -330,9 +336,15 @@ func StreamDecode(inPath string, outPath string) {
 			deps, devDeps := vd.Dependencies, vd.DevDependencies
 			allDependencies := make([]Dependency, 0, len(deps)+len(devDeps))
 			for k, v := range deps {
+				if tooLong(k, v) {
+					continue
+				}
 				allDependencies = append(allDependencies, Dependency{k, v})
 			}
 			for k, v := range devDeps {
+				if tooLong(k, v) {
+					continue
+				}
 				allDependencies = append(allDependencies, Dependency{k, v})
 			}
 
@@ -342,7 +354,7 @@ func StreamDecode(inPath string, outPath string) {
 		}
 		writer.Flush()
 		// versionWriter.Flush()
-		// fmt.Printf("Wrote dependencies of %s to file \n", e.Doc.Name)
+		fmt.Printf("Wrote dependencies of %s to file \n", e.Doc.Name)
 	}
 
 	// Read closing bracket
