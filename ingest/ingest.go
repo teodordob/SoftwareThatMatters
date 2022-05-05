@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
-	"github.com/vifraa/gopom"
+	"github.com/creekorful/mvnparser"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -77,7 +77,7 @@ type VersionDependencies struct {
 	Name           string
 	Version        string
 	VersionCreated time.Time
-	Dependencies   []Dependency
+	Dependencies   []MyDependency
 }
 
 type VersionInfo struct {
@@ -85,13 +85,14 @@ type VersionInfo struct {
 	DevDependencies map[string]interface{} `json:devDependencies`
 }
 
-type Dependency struct {
-	Name            string
+type MyDependency struct {
+	GroupId         string
+	Artifact        string
 	RequiredVersion string
 }
 
-func (d Dependency) String() string {
-	return fmt.Sprintf("%s:%s", d.Name, d.RequiredVersion)
+func (d MyDependency) String() string {
+	return fmt.Sprintf("%s:%s:%s", d.GroupId, d.Artifact, d.RequiredVersion)
 }
 
 // Ingest live data
@@ -190,7 +191,7 @@ func process(input []PackageInfo, outPath string) *[]VersionDependencies {
 			currentURL := fmt.Sprintf("https://repo1.maven.org/maven2/%s/%s/%s", nameUpdated, number, finalPom)
 
 			rawDataAddr, responseAddr := request(currentURL)
-			var parsed gopom.Project
+			var parsed mvnparser.MavenProject
 
 			if err := xml.Unmarshal(*rawDataAddr, &parsed); err != nil {
 				statusCode := responseAddr.StatusCode
@@ -205,9 +206,10 @@ func process(input []PackageInfo, outPath string) *[]VersionDependencies {
 			}
 
 			deps := parsed.Dependencies
-			allDependencies := make([]Dependency, 0, len(deps))
-			for k, v := range deps {
-				allDependencies = append(allDependencies, Dependency{k, v.(string)})
+			allDependencies := make([]MyDependency, 0, len(deps))
+			for _, k := range deps {
+				info := MyDependency{k.GroupId, k.ArtifactId, k.Version}
+				allDependencies = append(allDependencies, info)
 			}
 			versionDeps := VersionDependencies{name, number, time.Time(date), allDependencies}
 			//fmt.Println(versionDeps)
