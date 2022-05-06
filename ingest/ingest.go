@@ -302,14 +302,9 @@ func ResolveVersions(versionPath string, parsedDepsPathTemplate string, outPathT
 	//TODO: Find version that satisfies both of these requirements: Dependency satisfies semver constraints; Dependency was released before package
 }
 
-// Discard dependencies with absurdly long names "AAAAAAAAAA..."
-func tooLong(a, b string) bool {
-	const limit int = 10000
-	return len(a) > limit || len(b) > limit
-}
-
 //TODO: output a JSON file per package
-func StreamDecode(inPath string, jsonOutPath string) {
+func StreamParse(inPath string, jsonOutPath string) int {
+	var wg sync.WaitGroup
 	f, _ := os.Open(inPath)
 	dec := json.NewDecoder(f)
 
@@ -327,7 +322,8 @@ func StreamDecode(inPath string, jsonOutPath string) {
 		log.Fatal(err)
 	}
 	// While the decoder says there is more to parse, parse a JSON entries and print them one-by-one
-	for i := 0; dec.More(); i++ {
+	i := 0
+	for dec.More() {
 		var e Entry
 
 		if err := dec.Decode(&e); err != nil {
@@ -342,15 +338,9 @@ func StreamDecode(inPath string, jsonOutPath string) {
 			deps, devDeps := vd.Dependencies, vd.DevDependencies
 			allDependencies := make([]Dependency, 0, len(deps)+len(devDeps))
 			for k, v := range deps {
-				if tooLong(k, v) {
-					continue
-				}
 				allDependencies = append(allDependencies, Dependency{k, v})
 			}
 			for k, v := range devDeps {
-				if tooLong(k, v) {
-					continue
-				}
 				allDependencies = append(allDependencies, Dependency{k, v})
 			}
 
@@ -359,16 +349,21 @@ func StreamDecode(inPath string, jsonOutPath string) {
 			// versionWriter.Write([]string{e.Doc.Name, number}) // Write version to separate file
 		}
 		jsonPath := strings.Replace(jsonOutPath, ".", fmt.Sprintf("-%d.", i), 1) // Append a number to filePath
-		writeToFileJSON(&vds, jsonPath)
-		// versionWriter.Flush()
-		fmt.Printf("Wrote dependencies of %s to file \n", e.Doc.Name)
-	}
+		wg.Add(1)                                                                // Tell the WaitGroup it needs to wait for one more
+		go func(vds *[]VersionDependencies, jsonPath string) {
+			defer wg.Done() // Tell the WaitGroup this task is done after the function below is done
+			writeToFileJSON(vds, jsonPath)
+		}(&vds, jsonPath)
 
+		// versionWriter.Flush()
+		i++
+	}
 	// Read closing bracket
 	if _, err := dec.Token(); err != nil {
 		log.Fatal(err)
 	}
-
+	wg.Wait() // Wait for all subroutines to be done
+	return i
 }
 
 func writeToFileJSON(vdAddr *[]VersionDependencies, outPath string) {
@@ -408,7 +403,41 @@ func writeToFileJSON(vdAddr *[]VersionDependencies, outPath string) {
 		if err := enc.Encode(out); err != nil {
 			log.Fatal(err)
 		}
+		fmt.Printf("Wrote dependencies of %s to file \n", name)
 	}
+}
+
+func MergeJSON(inPathTemplate string, amount int) {
+	var result []OutputFormat = make([]OutputFormat, 0, amount)
+	outFile, err := os.OpenFile(fmt.Sprintf(inPathTemplate, ""), os.O_CREATE|os.O_WRONLY, 0644)
+	enc := json.NewEncoder(outFile)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for i := 0; i < amount; i++ {
+		currentData, err := os.ReadFile(fmt.Sprintf(inPathTemplate, fmt.Sprint(i)))
+
+		// If the input file was empty, move on
+		if len(currentData) < 1 {
+			fmt.Printf("File %d was empty\n", i)
+			continue
+		}
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		var out OutputFormat
+		if err := json.Unmarshal(currentData, &out); err != nil {
+			panic(err)
+		}
+		result = append(result, out)
+	}
+
+	enc.Encode(result)
+
 }
 
 /** func testProcess() *[]VersionDependencies {
