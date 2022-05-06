@@ -90,13 +90,13 @@ func (ct CreatedTime) String() string {
 }
 
 type Version struct {
-	Number      string      `json:number`
-	PublishedAt CreatedTime `json:published_at`
+	Number      string      `json:"number"`
+	PublishedAt CreatedTime `json:"published_at"`
 }
 
 type PackageInfo struct {
-	Name     string    `json:name`
-	Versions []Version `json:versions`
+	Name     string    `json:"name"`
+	Versions []Version `json:"versions"`
 }
 
 type VersionDependencies struct {
@@ -107,8 +107,8 @@ type VersionDependencies struct {
 }
 
 type VersionInfo struct {
-	Dependencies    map[string]interface{} `json:dependencies`
-	DevDependencies map[string]interface{} `json:devDependencies`
+	Dependencies    map[string]interface{} `json:"dependencies"`
+	DevDependencies map[string]interface{} `json:"devDependencies"`
 }
 
 type Dependency struct {
