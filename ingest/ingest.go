@@ -303,7 +303,8 @@ func ResolveVersions(versionPath string, parsedDepsPathTemplate string, outPathT
 }
 
 //TODO: output a JSON file per package
-func StreamParse(inPath string, jsonOutPath string) int {
+func StreamParse(inPath string, jsonOutPathTemplate string) int {
+	fmt.Println("Starting input JSON parser...")
 	var wg sync.WaitGroup
 	f, _ := os.Open(inPath)
 	dec := json.NewDecoder(f)
@@ -363,6 +364,7 @@ func StreamParse(inPath string, jsonOutPath string) int {
 		log.Fatal(err)
 	}
 	wg.Wait() // Wait for all subroutines to be done
+	fmt.Println("JSON parsing done")
 	return i
 }
 
@@ -417,11 +419,12 @@ func MergeJSON(inPathTemplate string, amount int) {
 	}
 
 	for i := 0; i < amount; i++ {
-		currentData, err := os.ReadFile(fmt.Sprintf(inPathTemplate, fmt.Sprint(i)))
+		currentPath := fmt.Sprintf(inPathTemplate, fmt.Sprint(i))
+		currentData, err := os.ReadFile(currentPath)
 
 		// If the input file was empty, move on
 		if len(currentData) < 1 {
-			fmt.Printf("File %d was empty\n", i)
+			fmt.Printf("\tFile %d was empty\n", i)
 			continue
 		}
 
@@ -431,13 +434,14 @@ func MergeJSON(inPathTemplate string, amount int) {
 
 		var out OutputFormat
 		if err := json.Unmarshal(currentData, &out); err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 		result = append(result, out)
+		//os.Remove(fmt.Sprintf(inPathTemplate, fmt.Sprint(i)))
 	}
 
 	enc.Encode(result)
-
+	fmt.Println("Merged JSON files")
 }
 
 /** func testProcess() *[]VersionDependencies {
