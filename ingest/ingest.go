@@ -410,6 +410,7 @@ func writeToFileJSON(vdAddr *[]VersionDependencies, outPath string) {
 }
 
 func MergeJSON(inPathTemplate string, amount int) {
+	var wg sync.WaitGroup
 	fmt.Println("Starting file merge process")
 	var result []OutputFormat = make([]OutputFormat, 0, amount)
 	outFile, err := os.OpenFile(fmt.Sprintf(inPathTemplate, "merged"), os.O_CREATE|os.O_WRONLY, 0644)
@@ -419,6 +420,7 @@ func MergeJSON(inPathTemplate string, amount int) {
 		log.Fatal(err)
 	}
 
+	resultChannel := make(chan OutputFormat, amount)
 	for i := 0; i < amount; i++ {
 		currentPath := fmt.Sprintf(inPathTemplate, fmt.Sprint(i))
 		currentData, err := os.ReadFile(currentPath)
@@ -432,17 +434,30 @@ func MergeJSON(inPathTemplate string, amount int) {
 		if err != nil {
 			log.Fatal(err)
 		}
+		wg.Add(1)
+		go func(currentDataAddr *[]byte, channel chan OutputFormat) {
+			defer wg.Done()
+			mergeJSONInternal(currentDataAddr, channel)
+		}(&currentData, resultChannel)
 
-		var out OutputFormat
-		if err := json.Unmarshal(currentData, &out); err != nil {
-			log.Fatal(err)
-		}
-		result = append(result, out)
 		//os.Remove(fmt.Sprintf(inPathTemplate, fmt.Sprint(i)))
+	}
+	wg.Wait()
+	close(resultChannel)
+	for elem := range resultChannel {
+		result = append(result, elem)
 	}
 
 	enc.Encode(result)
 	fmt.Println("Merged JSON files")
+}
+
+func mergeJSONInternal(input *[]byte, channel chan OutputFormat) {
+	var out OutputFormat
+	if err := json.Unmarshal(*input, &out); err != nil {
+		log.Fatal(err)
+	}
+	channel <- out
 }
 
 /** func testProcess() *[]VersionDependencies {
