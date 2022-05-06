@@ -405,11 +405,12 @@ func writeToFileJSON(vdAddr *[]VersionDependencies, outPath string) {
 		if err := enc.Encode(out); err != nil {
 			log.Fatal(err)
 		}
-		fmt.Printf("Wrote dependencies of %s to file \n", name)
+		// fmt.Printf("Wrote dependencies of %s to file \n", name)
 	}
 }
 
 func MergeJSON(inPathTemplate string, amount int) {
+	fmt.Println("Starting file merge process")
 	var result []OutputFormat = make([]OutputFormat, 0, amount)
 	outFile, err := os.OpenFile(fmt.Sprintf(inPathTemplate, "merged"), os.O_CREATE|os.O_WRONLY, 0644)
 	enc := json.NewEncoder(outFile)
