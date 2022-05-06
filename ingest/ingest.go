@@ -16,29 +16,29 @@ import (
 )
 
 type OutputVersion struct {
-	TimeStamp    time.Time         `json:timestamp`
-	Dependencies map[string]string `json:dependencies`
+	TimeStamp    time.Time         `json:"timestamp"`
+	Dependencies map[string]string `json:"dependencies"`
 }
 
 type OutputFormat struct {
-	Name     string `json:name`
-	Versions map[string]OutputVersion
+	Name     string                   `json:"name"`
+	Versions map[string]OutputVersion `json:"versions"`
 }
 
 type VersionData struct {
-	Version         string            `json:version`
-	DevDependencies map[string]string `json:devDependencies`
-	Dependencies    map[string]string `json:dependencies`
+	Version         string            `json:"version"`
+	DevDependencies map[string]string `json:"devDependencies"`
+	Dependencies    map[string]string `json:"dependencies"`
 }
 
 type Doc struct {
-	Name     string                 `json:name`
-	Versions map[string]VersionData `json:versions`
-	Time     map[string]CreatedTime `json:time`
+	Name     string                 `json:"name"`
+	Versions map[string]VersionData `json:"versions"`
+	Time     map[string]CreatedTime `json:"time"`
 }
 
 type Entry struct {
-	Doc Doc `json:doc`
+	Doc Doc `json:"doc"`
 }
 
 //TODO: Add method to put resolved dependencies back into JSON and output to file
