@@ -349,8 +349,8 @@ func StreamParse(inPath string, jsonOutPathTemplate string) int {
 			vds = append(vds, vd)
 			// versionWriter.Write([]string{e.Doc.Name, number}) // Write version to separate file
 		}
-		jsonPath := strings.Replace(jsonOutPath, ".", fmt.Sprintf("-%d.", i), 1) // Append a number to filePath
-		wg.Add(1)                                                                // Tell the WaitGroup it needs to wait for one more
+		jsonPath := fmt.Sprintf(jsonOutPathTemplate, fmt.Sprint(i)) // Append a number to filePath
+		wg.Add(1)                                                   // Tell the WaitGroup it needs to wait for one more
 		go func(vds *[]VersionDependencies, jsonPath string) {
 			defer wg.Done() // Tell the WaitGroup this task is done after the function below is done
 			writeToFileJSON(vds, jsonPath)
@@ -411,7 +411,7 @@ func writeToFileJSON(vdAddr *[]VersionDependencies, outPath string) {
 
 func MergeJSON(inPathTemplate string, amount int) {
 	var result []OutputFormat = make([]OutputFormat, 0, amount)
-	outFile, err := os.OpenFile(fmt.Sprintf(inPathTemplate, ""), os.O_CREATE|os.O_WRONLY, 0644)
+	outFile, err := os.OpenFile(fmt.Sprintf(inPathTemplate, "merged"), os.O_CREATE|os.O_WRONLY, 0644)
 	enc := json.NewEncoder(outFile)
 
 	if err != nil {
