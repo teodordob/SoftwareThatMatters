@@ -15,6 +15,16 @@ import (
 	ccsv "github.com/tsak/concurrent-csv-writer"
 )
 
+type OutputVersion struct {
+	TimeStamp    time.Time         `json:timestamp`
+	Dependencies map[string]string `json:dependencies`
+}
+
+type OutputFormat struct {
+	Name     string `json:name`
+	Versions map[string]OutputVersion
+}
+
 type VersionData struct {
 	Version         string            `json:version`
 	DevDependencies map[string]string `json:devDependencies`
@@ -298,17 +308,11 @@ func tooLong(a, b string) bool {
 	return len(a) > limit || len(b) > limit
 }
 
-func StreamDecode(inPath string, outPath string) {
+//TODO: output a JSON file per package
+func StreamDecode(inPath string, jsonOutPath string) {
 	f, _ := os.Open(inPath)
 	dec := json.NewDecoder(f)
 
-	outFile, err := os.OpenFile(outPath, os.O_CREATE|os.O_WRONLY, 0644)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer outFile.Close()
-	writer := csv.NewWriter(outFile)
 	// versionPath := strings.Replace(outPath, ".", ".versions.", 1)
 	// versionFile, err := os.OpenFile(versionPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 
@@ -322,14 +326,16 @@ func StreamDecode(inPath string, outPath string) {
 	if _, err := dec.Token(); err != nil {
 		log.Fatal(err)
 	}
-
-	for dec.More() {
+	// While the decoder says there is more to parse, parse a JSON entries and print them one-by-one
+	for i := 0; dec.More(); i++ {
 		var e Entry
 
 		if err := dec.Decode(&e); err != nil {
 			log.Fatal(err)
 		}
 		timeStamps := e.Doc.Time
+
+		var vds []VersionDependencies = make([]VersionDependencies, 0, len(e.Doc.Versions))
 
 		for number, vd := range e.Doc.Versions {
 			t := time.Time(timeStamps[number])
@@ -349,10 +355,11 @@ func StreamDecode(inPath string, outPath string) {
 			}
 
 			vd := VersionDependencies{e.Doc.Name, number, t, allDependencies}
-			writeOneToFile(&vd, writer) // Write dependencies to file
+			vds = append(vds, vd)
 			// versionWriter.Write([]string{e.Doc.Name, number}) // Write version to separate file
 		}
-		writer.Flush()
+		jsonPath := strings.Replace(jsonOutPath, ".", fmt.Sprintf("-%d.", i), 1) // Append a number to filePath
+		writeToFileJSON(&vds, jsonPath)
 		// versionWriter.Flush()
 		fmt.Printf("Wrote dependencies of %s to file \n", e.Doc.Name)
 	}
@@ -362,6 +369,46 @@ func StreamDecode(inPath string, outPath string) {
 		log.Fatal(err)
 	}
 
+}
+
+func writeToFileJSON(vdAddr *[]VersionDependencies, outPath string) {
+	outFile, err := os.OpenFile(outPath, os.O_CREATE|os.O_WRONLY, 0644)
+
+	vds := *vdAddr
+
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer outFile.Close()
+
+	enc := json.NewEncoder(outFile)
+	// Only when vds is non-empty
+	if len(vds) > 0 {
+		name := vds[0].Name
+		versionMap := make(map[string]OutputVersion, len(vds))
+
+		for _, vd := range vds {
+			number := vd.Version
+			timestamp := vd.VersionCreated
+			deps := vd.Dependencies
+
+			depMap := make(map[string]string, len(deps))
+
+			for _, ver := range deps {
+				depMap[ver.Name] = ver.RequiredVersion
+			}
+
+			outVersion := OutputVersion{timestamp, depMap}
+			versionMap[number] = outVersion
+		}
+
+		out := OutputFormat{name, versionMap}
+
+		// Error handling for encoding
+		if err := enc.Encode(out); err != nil {
+			log.Fatal(err)
+		}
+	}
 }
 
 /** func testProcess() *[]VersionDependencies {
