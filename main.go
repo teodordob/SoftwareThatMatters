@@ -26,7 +26,7 @@ func main() {
 	//ingest.IngestFile(offline_file, outPath)
 	// ingest.Ingest(limited_discovery_query, outPathTemplate, versionPath)
 
-	amount := ingest.StreamParse("data/10k.rows.json", outPathTemplate)
+	amount := ingest.StreamParse("data/input.json", outPathTemplate)
 	ingest.MergeJSON(outPathTemplate, amount)
 	runtime.ReadMemStats(&m2)
 	t2 = time.Now()
