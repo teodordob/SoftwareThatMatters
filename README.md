@@ -2,10 +2,10 @@
 
 Software that matters analysis and code
 
-To set up go dependencies, run the following in the root directory:
+To set up go dependencies, run the following in the root directory (optional, since go should download deps automatically):
 
 ```sh
-go get .
+go mod download
 ```
 
 To ingest the data, run the following in the root directory:
