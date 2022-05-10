@@ -302,7 +302,6 @@ func ResolveVersions(versionPath string, parsedDepsPathTemplate string, outPathT
 	//TODO: Find version that satisfies both of these requirements: Dependency satisfies semver constraints; Dependency was released before package
 }
 
-//TODO: output a JSON file per package
 func StreamParse(inPath string, jsonOutPathTemplate string) int {
 	fmt.Println("Starting input JSON parser...")
 	var wg sync.WaitGroup
@@ -444,30 +443,3 @@ func MergeJSON(inPathTemplate string, amount int) {
 	enc.Encode(result)
 	fmt.Println("Merged JSON files")
 }
-
-/** func testProcess() *[]VersionDependencies {
-	var result []VersionDependencies
-	name, number := "babel", "0.0.1"
-	currentURL := fmt.Sprintf("https://registry.npmjs.org/%s/%s", name, number)
-
-	rawDataAddr, statusAddr := request(currentURL)
-	var parsed VersionInfo
-
-	if err := json.Unmarshal(*rawDataAddr, &parsed); err != nil {
-		status := *statusAddr
-		fmt.Println("Http status code was: ", status) // This will probably be a rate-limit status code
-		panic(err)
-	}
-
-	deps, devDeps := parsed.Dependencies, parsed.DevDependencies
-	allDependencies := make([]Dependency, 0, len(deps)+len(devDeps))
-	for k, v := range deps {
-		allDependencies = append(allDependencies, Dependency{k, v.(string)})
-	}
-	for k, v := range devDeps {
-		allDependencies = append(allDependencies, Dependency{k, v.(string)})
-	}
-
-	result = append(result, VersionDependencies{name, number, allDependencies})
-	return &result
-} **/
