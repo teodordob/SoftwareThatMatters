@@ -3,7 +3,7 @@ OUTFILE="data/input.json"
 N=$1
 URL=""
 
-if [ ! -d "/data"] # If data dir doesn't exist yet, create it
+if [ ! -d "data" ] # If data dir doesn't exist yet, create it
 then
 mkdir data && mkdir data/out
 fi
