@@ -1,18 +1,13 @@
 package ingest
 
 import (
-	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
 	"strings"
 	"sync"
 	"time"
-
-	ccsv "github.com/tsak/concurrent-csv-writer"
 )
 
 type OutputVersion struct {
@@ -40,8 +35,6 @@ type Doc struct {
 type Entry struct {
 	Doc Doc `json:"doc"`
 }
-
-//TODO: Add method to put resolved dependencies back into JSON and output to file
 
 // Type alias so we can create a custom parser for time since it wasn't parsed correctly natively
 type CreatedTime time.Time
@@ -94,21 +87,11 @@ type Version struct {
 	PublishedAt CreatedTime `json:"published_at"`
 }
 
-type PackageInfo struct {
-	Name     string    `json:"name"`
-	Versions []Version `json:"versions"`
-}
-
 type VersionDependencies struct {
 	Name           string
 	Version        string
 	VersionCreated time.Time
 	Dependencies   []Dependency
-}
-
-type VersionInfo struct {
-	Dependencies    map[string]interface{} `json:"dependencies"`
-	DevDependencies map[string]interface{} `json:"devDependencies"`
 }
 
 type Dependency struct {
@@ -118,188 +101,6 @@ type Dependency struct {
 
 func (d Dependency) String() string {
 	return fmt.Sprintf("%s:%s", d.Name, d.RequiredVersion)
-}
-
-// Ingest live data
-func Ingest(query string, outPathTemplate, versionPath string) {
-	rawDataAddr, requestAddr := request(query)
-
-	if statusCode := requestAddr.StatusCode; statusCode != 200 {
-		log.Fatalln("Uh-oh, HTTP status was: ", requestAddr.Status)
-	}
-	ingestInternal(*rawDataAddr, outPathTemplate, versionPath)
-}
-
-// Ingest (partially) offline data
-func IngestFile(file string, outPathTemplate, versionPath string) {
-	inputBytes, err := ioutil.ReadFile(file)
-
-	if err != nil {
-		fmt.Println("Something went wrong with reading the file:")
-		panic(err)
-	}
-
-	ingestInternal(inputBytes, outPathTemplate, versionPath)
-}
-
-func ingestInternal(inputBytes []byte, outPathTemplate, versionPath string) {
-	var wg sync.WaitGroup
-
-	var arr []PackageInfo
-	if err := json.Unmarshal(inputBytes, &arr); err != nil {
-		fmt.Println("JSON parsing went wrong:")
-		panic(err)
-	}
-
-	fmt.Println("Got data from input")
-	versionPrinter(&arr, versionPath)
-	fmt.Println("Processing...")
-
-	// result := make(chan *[]VersionDependencies)
-	length := len(arr)
-	// TODO: Find smarter way to divide input into threads?
-	for i := 0; i < length; i++ {
-		wg.Add(1)
-		go func(i int) {
-			defer wg.Done()
-			path := fmt.Sprintf(outPathTemplate, i)
-			process(arr[i:i+1], path)
-		}(i)
-	}
-
-	wg.Wait() // Wait for all goroutines to be done
-}
-
-func versionPrinter(input *[]PackageInfo, versionPath string) {
-	var wg sync.WaitGroup
-
-	csv, err := ccsv.NewCsvWriter(versionPath)
-
-	defer csv.Close()
-	defer wg.Wait()
-
-	if err != nil {
-		panic(fmt.Sprintln("Couldn't open ", versionPath))
-	}
-
-	for i, p := range *input {
-		wg.Add(1)
-		go func(i int, p PackageInfo) {
-			defer wg.Done()
-			printSinglePackage(&p, csv)
-		}(i, p)
-	}
-
-}
-
-func printSinglePackage(packageAddr *PackageInfo, writer *ccsv.CsvWriter) {
-	p := *packageAddr
-	name, versions := p.Name, p.Versions
-
-	for _, ver := range versions {
-		num, date := ver.Number, ver.PublishedAt
-		writer.Write([]string{name, num, time.Time(date).Format(time.RFC3339Nano)})
-	}
-}
-
-func request(req string) (*[]byte, *http.Response) {
-	// fmt.Println("Starting request...")
-	resp, err := http.Get(req)
-	if err != nil {
-		panic(err)
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		panic(err)
-	}
-	// fmt.Println(string(body))
-	return &body, resp
-}
-
-func process(input []PackageInfo, outPath string) *[]VersionDependencies {
-	var result []VersionDependencies
-	inputLength := len(input)
-
-	file, err := os.OpenFile(outPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	defer file.Close()
-
-	w := csv.NewWriter(file)
-
-	for packageIdx := range input {
-		p := &input[packageIdx]
-		name, versionsAddr := p.Name, &p.Versions
-		for verIdx := range *versionsAddr {
-			version := (*versionsAddr)[verIdx]
-			number, date := version.Number, version.PublishedAt
-			currentURL := fmt.Sprintf("https://registry.npmjs.org/%s/%s", name, number)
-
-			rawDataAddr, responseAddr := request(currentURL)
-			var parsed VersionInfo
-
-			if err := json.Unmarshal(*rawDataAddr, &parsed); err != nil {
-				statusCode := responseAddr.StatusCode
-				if statusCode == 404 { // This package's dependencies were not found, so try the next one
-					fmt.Printf("The following package's dependencies weren't found: \"%s\" version \"%s\"\n", name, number)
-					continue
-				} else {
-					status := responseAddr.Status
-					fmt.Println("Http status code was: ", status) // This will probably be a rate-limit status code
-					panic(err)
-				}
-			}
-
-			deps, devDeps := parsed.Dependencies, parsed.DevDependencies
-			allDependencies := make([]Dependency, 0, len(deps)+len(devDeps))
-			for k, v := range deps {
-				allDependencies = append(allDependencies, Dependency{k, v.(string)})
-			}
-			for k, v := range devDeps {
-				allDependencies = append(allDependencies, Dependency{k, v.(string)})
-			}
-			versionDeps := VersionDependencies{name, number, time.Time(date), allDependencies}
-			//fmt.Println(versionDeps)
-			result = append(result, versionDeps)
-			writeOneToFile(&versionDeps, w)
-
-			if verIdx%10 == 0 { // Flush writer every 10 entries
-				w.Flush()
-			}
-		}
-		w.Flush() // Flush at the end to make sure there's no data left
-		fmt.Printf("Package dependencies of %s (%d of %d) fully resolved \n", name, packageIdx+1, inputLength)
-	}
-	return &result
-}
-
-func writeOneToFile(input *VersionDependencies, csvWriter *csv.Writer) {
-	name, version, date, deps := (*input).Name, (*input).Version, (*input).VersionCreated, (*input).Dependencies
-
-	var depsString string
-
-	l := len(deps)
-
-	for i, dep := range deps {
-		depsString += fmt.Sprint(dep)
-		if i < l-1 {
-			depsString += ";"
-		}
-	}
-	depsString = fmt.Sprintf("[%s]", depsString)
-
-	if err := csvWriter.Write([]string{name, version, date.Format(time.RFC3339Nano), depsString}); err != nil {
-		log.Fatal(err)
-	}
-}
-
-// Resolve semantic versions in parsed data CSV files using date and semantic version constraints
-func ResolveVersions(versionPath string, parsedDepsPathTemplate string, outPathTemplate string) {
-	//TODO: Find version that satisfies both of these requirements: Dependency satisfies semver constraints; Dependency was released before package
 }
 
 func StreamParse(inPath string, jsonOutPathTemplate string) int {
