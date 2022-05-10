@@ -1,13 +1,11 @@
 package graph
 
 import (
+	"encoding/csv"
 	"fmt"
 	"log"
+	"os"
 )
-
-func PrintGraph() string {
-	return "Hello World!"
-}
 
 type node struct {
 	name         string
@@ -87,6 +85,12 @@ func (graph *graph) AddDependency(dependent, dependency *node) {
 	dependency.dependents = append(dependency.dependents, dependent)
 }
 
+func check(err error) {
+	if err != nil {
+		log.Fatalln(err)
+	}
+}
+
 func Test() {
 	//graph := &graph{}
 	//for i := 0; i < 3; i++ {
@@ -102,5 +106,28 @@ func Test() {
 	graph.AddNode(node1)
 	graph.AddNode(node2)
 	graph.AddDependency(node1, node2)
+	graph.Show()
+}
+
+//func CreateNodesFromCSV(csvLine []string) (*node, *node) {
+//	dependentNode := Node(csvLine[0], csvLine[1])
+//	dependencyNode := Node(csvLine[3], csvLine[4])
+//}
+
+func CreateGraphFromDependenciesCSV() {
+	csvFile, err := os.Open("data/input/dependencies.csv")
+	check(err)
+	defer csvFile.Close()
+
+	csvLines, readerErr := csv.NewReader(csvFile).ReadAll()
+	check(readerErr)
+
+	graph := Graph()
+
+	for _, line := range csvLines {
+		dependentNode := Node(line[0], line[1])
+		dependencyNode := Node(line[3], line[4])
+		graph.AddDependency(dependentNode, dependencyNode)
+	}
 	graph.Show()
 }
