@@ -1,133 +1,290 @@
 package graph
 
 import (
-	"encoding/csv"
-	"fmt"
-	"log"
-	"os"
+	"gonum.org/v1/gonum/graph"
+	"gonum.org/v1/gonum/graph/iterator"
+	"gonum.org/v1/gonum/graph/simple"
 )
 
-type node struct {
-	name         string
-	version      string
-	id           string  // unique id formatted as "name-version"
-	dependencies []*node // nodes upon which this node depends. Could be seen as parents.
-	dependents   []*node // nodes that depend on this node. Could be seen as children.
+// GraphNode is a node in an implicit graph.
+type GraphNode struct {
+	id        int64
+	neighbors []graph.Node
+	roots     []*GraphNode
 }
 
-// Node - Constructor for a node. Used to create ids.
-func Node(name, version string) *node {
-	return &node{
-		name:         name,
-		version:      version,
-		id:           fmt.Sprintf("%s-%s", name, version),
-		dependencies: []*node{},
-		dependents:   []*node{},
+// NewGraphNode returns a new GraphNode.
+func NewGraphNode(id int64) *GraphNode {
+	return &GraphNode{id: id}
+}
+
+// Node allows GraphNode to satisfy the graph.Graph interface.
+func (g *GraphNode) Node(id int64) graph.Node {
+	if id == g.id {
+		return g
 	}
-}
 
-type graph struct {
-	nodes []*node
-}
+	seen := map[int64]struct{}{g.id: {}}
+	for _, root := range g.roots {
+		if root.ID() == id {
+			return root
+		}
 
-// Graph - Constructor for a graph. Allows future customizations of the graph structure.
-func Graph() *graph {
-	return &graph{
-		nodes: []*node{},
-	}
-}
-
-func (graph *graph) IsNodeAlreadyPresent(n *node) bool {
-	for _, node := range graph.nodes {
-		if node.id == n.id {
-			return true
+		if root.has(seen, id) {
+			return root
 		}
 	}
+
+	for _, n := range g.neighbors {
+		if n.ID() == id {
+			return n
+		}
+
+		if gn, ok := n.(*GraphNode); ok {
+			if gn.has(seen, id) {
+				return gn
+			}
+		}
+	}
+
+	return nil
+}
+
+func (g *GraphNode) has(seen map[int64]struct{}, id int64) bool {
+	for _, root := range g.roots {
+		if _, ok := seen[root.ID()]; ok {
+			continue
+		}
+
+		seen[root.ID()] = struct{}{}
+		if root.ID() == id {
+			return true
+		}
+
+		if root.has(seen, id) {
+			return true
+		}
+
+	}
+
+	for _, n := range g.neighbors {
+		if _, ok := seen[n.ID()]; ok {
+			continue
+		}
+
+		seen[n.ID()] = struct{}{}
+		if n.ID() == id {
+			return true
+		}
+
+		if gn, ok := n.(*GraphNode); ok {
+			if gn.has(seen, id) {
+				return true
+			}
+		}
+	}
+
 	return false
 }
 
-func (graph *graph) Show() {
-	for _, node := range graph.nodes {
-		fmt.Printf("%s(V%s):\n", node.name, node.version)
-		fmt.Printf("\tDependencies:\n")
-		for _, dependencies := range node.dependencies {
-			fmt.Printf("\t\t%s(V%s)\n", dependencies.name, dependencies.version)
+// Nodes allows GraphNode to satisfy the graph.Graph interface.
+func (g *GraphNode) Nodes() graph.Nodes {
+	nodes := []graph.Node{g}
+	seen := map[int64]struct{}{g.id: {}}
+
+	for _, root := range g.roots {
+		nodes = append(nodes, root)
+		seen[root.ID()] = struct{}{}
+
+		nodes = root.nodes(nodes, seen)
+	}
+
+	for _, n := range g.neighbors {
+		nodes = append(nodes, n)
+		seen[n.ID()] = struct{}{}
+
+		if gn, ok := n.(*GraphNode); ok {
+			nodes = gn.nodes(nodes, seen)
 		}
-		fmt.Printf("\tDependents:\n")
-		for _, dependents := range node.dependents {
-			fmt.Printf("\t%s(V%s)\n", dependents.name, dependents.version)
+	}
+
+	return iterator.NewOrderedNodes(nodes)
+}
+
+func (g *GraphNode) nodes(dst []graph.Node, seen map[int64]struct{}) []graph.Node {
+	for _, root := range g.roots {
+		if _, ok := seen[root.ID()]; ok {
+			continue
+		}
+		seen[root.ID()] = struct{}{}
+		dst = append(dst, graph.Node(root))
+
+		dst = root.nodes(dst, seen)
+	}
+
+	for _, n := range g.neighbors {
+		if _, ok := seen[n.ID()]; ok {
+			continue
+		}
+
+		dst = append(dst, n)
+		if gn, ok := n.(*GraphNode); ok {
+			dst = gn.nodes(dst, seen)
 		}
 	}
+
+	return dst
 }
 
-func (graph *graph) CreateAndAddNode(name, version string) {
-	node := Node(name, version)
-	graph.AddNode(node)
-}
-
-func (graph *graph) AddNode(node *node) {
-
-	if !graph.IsNodeAlreadyPresent(node) {
-		graph.nodes = append(graph.nodes, node)
-	} else {
-		log.Printf("Node %s(V%s) already present in the graph. Skipping...\n", node.name, node.version)
+// From allows GraphNode to satisfy the graph.Graph interface.
+func (g *GraphNode) From(id int64) graph.Nodes {
+	if id == g.ID() {
+		return iterator.NewOrderedNodes(g.neighbors)
 	}
+
+	seen := map[int64]struct{}{g.id: {}}
+	for _, root := range g.roots {
+		seen[root.ID()] = struct{}{}
+
+		if result := root.findNeighbors(id, seen); result != nil {
+			return iterator.NewOrderedNodes(result)
+		}
+	}
+
+	for _, n := range g.neighbors {
+		seen[n.ID()] = struct{}{}
+
+		if gn, ok := n.(*GraphNode); ok {
+			if result := gn.findNeighbors(id, seen); result != nil {
+				return iterator.NewOrderedNodes(result)
+			}
+		}
+	}
+
+	return nil
 }
 
-func (graph *graph) AddDependency(dependent, dependency *node) {
-	if !graph.IsNodeAlreadyPresent(dependent) {
-		graph.nodes = append(graph.nodes, dependent)
+func (g *GraphNode) findNeighbors(id int64, seen map[int64]struct{}) []graph.Node {
+	if id == g.ID() {
+		return g.neighbors
 	}
-	if !graph.IsNodeAlreadyPresent(dependency) {
-		graph.nodes = append(graph.nodes, dependency)
+
+	for _, root := range g.roots {
+		if _, ok := seen[root.ID()]; ok {
+			continue
+		}
+		seen[root.ID()] = struct{}{}
+
+		if result := root.findNeighbors(id, seen); result != nil {
+			return result
+		}
 	}
-	dependent.dependencies = append(dependent.dependencies, dependency)
-	dependency.dependents = append(dependency.dependents, dependent)
+
+	for _, n := range g.neighbors {
+		if _, ok := seen[n.ID()]; ok {
+			continue
+		}
+		seen[n.ID()] = struct{}{}
+
+		if gn, ok := n.(*GraphNode); ok {
+			if result := gn.findNeighbors(id, seen); result != nil {
+				return result
+			}
+		}
+	}
+
+	return nil
 }
 
-func check(err error) {
-	if err != nil {
-		log.Fatalln(err)
-	}
+// HasEdgeBetween allows GraphNode to satisfy the graph.Graph interface.
+func (g *GraphNode) HasEdgeBetween(uid, vid int64) bool {
+	return g.EdgeBetween(uid, vid) != nil
 }
 
-func Test() {
-	//graph := &graph{}
-	//for i := 0; i < 3; i++ {
-	//	graph.AddNode(fmt.Sprintf("node%d", i), fmt.Sprintf("%d.0.0", i))
-	//}
-	//graph.AddNode("node1", "1.0.0")
-	//graph.Show()
-
-	graph := Graph()
-	node1 := Node("A", "1.1")
-	node2 := Node("B", "1")
-
-	graph.AddNode(node1)
-	graph.AddNode(node2)
-	graph.AddDependency(node1, node2)
-	graph.Show()
+// Edge allows GraphNode to satisfy the graph.Graph interface.
+func (g *GraphNode) Edge(uid, vid int64) graph.Edge {
+	return g.EdgeBetween(uid, vid)
 }
 
-//func CreateNodesFromCSV(csvLine []string) (*node, *node) {
-//	dependentNode := Node(csvLine[0], csvLine[1])
-//	dependencyNode := Node(csvLine[3], csvLine[4])
-//}
+// EdgeBetween allows GraphNode to satisfy the graph.Graph interface.
+func (g *GraphNode) EdgeBetween(uid, vid int64) graph.Edge {
+	if uid == g.id || vid == g.id {
+		for _, n := range g.neighbors {
+			if n.ID() == uid || n.ID() == vid {
+				return simple.Edge{F: g, T: n}
+			}
 
-func CreateGraphFromDependenciesCSV() {
-	csvFile, err := os.Open("data/input/dependencies.csv")
-	check(err)
-	defer csvFile.Close()
-
-	csvLines, readerErr := csv.NewReader(csvFile).ReadAll()
-	check(readerErr)
-
-	graph := Graph()
-
-	for _, line := range csvLines {
-		dependentNode := Node(line[0], line[1])
-		dependencyNode := Node(line[3], line[4])
-		graph.AddDependency(dependentNode, dependencyNode)
+		}
+		return nil
 	}
-	graph.Show()
+
+	seen := map[int64]struct{}{g.id: {}}
+	for _, root := range g.roots {
+		seen[root.ID()] = struct{}{}
+		if result := root.edgeBetween(uid, vid, seen); result != nil {
+			return result
+		}
+	}
+
+	for _, n := range g.neighbors {
+		seen[n.ID()] = struct{}{}
+		if gn, ok := n.(*GraphNode); ok {
+			if result := gn.edgeBetween(uid, vid, seen); result != nil {
+				return result
+			}
+		}
+	}
+
+	return nil
+}
+
+func (g *GraphNode) edgeBetween(uid, vid int64, seen map[int64]struct{}) graph.Edge {
+	if uid == g.id || vid == g.id {
+		for _, n := range g.neighbors {
+			if n.ID() == uid || n.ID() == vid {
+				return simple.Edge{F: g, T: n}
+			}
+		}
+		return nil
+	}
+
+	for _, root := range g.roots {
+		if _, ok := seen[root.ID()]; ok {
+			continue
+		}
+		seen[root.ID()] = struct{}{}
+		if result := root.edgeBetween(uid, vid, seen); result != nil {
+			return result
+		}
+	}
+
+	for _, n := range g.neighbors {
+		if _, ok := seen[n.ID()]; ok {
+			continue
+		}
+
+		seen[n.ID()] = struct{}{}
+		if gn, ok := n.(*GraphNode); ok {
+			if result := gn.edgeBetween(uid, vid, seen); result != nil {
+				return result
+			}
+		}
+	}
+
+	return nil
+}
+
+// ID allows GraphNode to satisfy the graph.Node interface.
+func (g *GraphNode) ID() int64 {
+	return g.id
+}
+
+// AddMeighbor adds an edge between g and n.
+func (g *GraphNode) AddNeighbor(n *GraphNode) {
+	g.neighbors = append(g.neighbors, graph.Node(n))
+}
+
+// AddRoot adds provides an entrance into the graph g from n.
+func (g *GraphNode) AddRoot(n *GraphNode) {
+	g.roots = append(g.roots, n)
 }
