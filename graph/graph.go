@@ -13,6 +13,16 @@ type GraphNode struct {
 	roots     []*GraphNode
 }
 
+type OutputVersion struct {
+	TimeStamp    string            `json:timestamp`
+	Dependencies map[string]string `json:dependencies`
+}
+
+type VersionDependencies struct {
+	Name     string
+	Versions map[string]OutputVersion
+}
+
 // NewGraphNode returns a new GraphNode.
 func NewGraphNode(id int64) *GraphNode {
 	return &GraphNode{id: id}
