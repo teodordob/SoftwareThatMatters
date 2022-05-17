@@ -219,8 +219,8 @@ func (g *GraphNode) AddNeighbor(n *GraphNode) {
 	g.Neighbors = append(g.Neighbors, graph.Node(n))
 }
 
-func CreateMap(arr []DependenciesInfo) map[int64]DependenciesInfo {
-	m := make(map[int64]DependenciesInfo)
+func CreateMap(arr []PackageInfo) map[int64]PackageInfo {
+	m := make(map[int64]PackageInfo)
 	var id int64 = 0
 	for n := range arr {
 		m[id] = arr[n]
@@ -228,6 +228,6 @@ func CreateMap(arr []DependenciesInfo) map[int64]DependenciesInfo {
 	}
 	return m
 }
-func AddElementToMap(x DependenciesInfo, m map[int64]DependenciesInfo) {
+func AddElementToMap(x PackageInfo, m map[int64]PackageInfo) {
 	m[int64(len(m))] = x
 }
