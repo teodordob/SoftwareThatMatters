@@ -4,8 +4,6 @@ import (
 	"fmt"
 
 	g "github.com/AJMBrands/SoftwareThatMatters/graph"
-	"gonum.org/v1/gonum/graph"
-	"gonum.org/v1/gonum/graph/topo"
 )
 
 func main() {
@@ -33,18 +31,16 @@ func main() {
 
 	// graph G {
 	G := g.NewGraphNode(0)
+
 	// 	e
 	e := g.NewGraphNode(1)
 
 	// 	subgraph clusterA {
-	clusterA := g.NewGraphNode(2)
 	// 		a -- b
 	a := g.NewGraphNode(3)
 	b := g.NewGraphNode(4)
 	a.AddNeighbor(b)
 	b.AddNeighbor(a)
-	clusterA.AddRoot(a)
-	clusterA.AddRoot(b)
 
 	// 		subgraph clusterC {
 	clusterC := g.NewGraphNode(5)
@@ -53,11 +49,6 @@ func main() {
 	D := g.NewGraphNode(7)
 	C.AddNeighbor(D)
 	D.AddNeighbor(C)
-
-	clusterC.AddRoot(C)
-	clusterC.AddRoot(D)
-	// 		}
-	clusterA.AddRoot(clusterC)
 	// 	}
 
 	// 	subgraph clusterB {
@@ -67,8 +58,6 @@ func main() {
 	f := g.NewGraphNode(10)
 	d.AddNeighbor(f)
 	f.AddNeighbor(d)
-	clusterB.AddRoot(d)
-	clusterB.AddRoot(f)
 	// 	}
 
 	// 	d -- D
@@ -82,14 +71,9 @@ func main() {
 	// 	clusterC -- clusterB
 	clusterC.AddNeighbor(clusterB)
 	clusterB.AddNeighbor(clusterC)
-
-	G.AddRoot(e)
-	G.AddRoot(clusterA)
-	G.AddRoot(clusterB)
+	clusterB.AddNeighbor(G)
 	// }
 
-	if topo.IsPathIn(G, []graph.Node{C, D, d, f}) {
-		fmt.Println("C--D--d--f is a path in G.")
-	}
+	fmt.Println(a)
 
 }

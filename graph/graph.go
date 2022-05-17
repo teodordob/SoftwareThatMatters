@@ -9,18 +9,17 @@ import (
 // GraphNode is a node in an implicit graph.
 type GraphNode struct {
 	id        int64
-	neighbors []graph.Node
-	roots     []*GraphNode
+	Neighbors []graph.Node
 }
 
 type OutputVersion struct {
-	TimeStamp    string            `json:timestamp`
-	Dependencies map[string]string `json:dependencies`
+	TimeStamp    string            `json:"timestamp"`
+	Dependencies map[string]string `json:"dependencies"`
 }
 
 type VersionDependencies struct {
-	Name     string
-	Versions map[string]OutputVersion
+	Name     string                   `json:"name"`
+	Versions map[string]OutputVersion `json:"versions"`
 }
 
 // NewGraphNode returns a new GraphNode.
@@ -35,17 +34,8 @@ func (g *GraphNode) Node(id int64) graph.Node {
 	}
 
 	seen := map[int64]struct{}{g.id: {}}
-	for _, root := range g.roots {
-		if root.ID() == id {
-			return root
-		}
 
-		if root.has(seen, id) {
-			return root
-		}
-	}
-
-	for _, n := range g.neighbors {
+	for _, n := range g.Neighbors {
 		if n.ID() == id {
 			return n
 		}
@@ -61,23 +51,8 @@ func (g *GraphNode) Node(id int64) graph.Node {
 }
 
 func (g *GraphNode) has(seen map[int64]struct{}, id int64) bool {
-	for _, root := range g.roots {
-		if _, ok := seen[root.ID()]; ok {
-			continue
-		}
 
-		seen[root.ID()] = struct{}{}
-		if root.ID() == id {
-			return true
-		}
-
-		if root.has(seen, id) {
-			return true
-		}
-
-	}
-
-	for _, n := range g.neighbors {
+	for _, n := range g.Neighbors {
 		if _, ok := seen[n.ID()]; ok {
 			continue
 		}
@@ -102,14 +77,7 @@ func (g *GraphNode) Nodes() graph.Nodes {
 	nodes := []graph.Node{g}
 	seen := map[int64]struct{}{g.id: {}}
 
-	for _, root := range g.roots {
-		nodes = append(nodes, root)
-		seen[root.ID()] = struct{}{}
-
-		nodes = root.nodes(nodes, seen)
-	}
-
-	for _, n := range g.neighbors {
+	for _, n := range g.Neighbors {
 		nodes = append(nodes, n)
 		seen[n.ID()] = struct{}{}
 
@@ -122,17 +90,8 @@ func (g *GraphNode) Nodes() graph.Nodes {
 }
 
 func (g *GraphNode) nodes(dst []graph.Node, seen map[int64]struct{}) []graph.Node {
-	for _, root := range g.roots {
-		if _, ok := seen[root.ID()]; ok {
-			continue
-		}
-		seen[root.ID()] = struct{}{}
-		dst = append(dst, graph.Node(root))
 
-		dst = root.nodes(dst, seen)
-	}
-
-	for _, n := range g.neighbors {
+	for _, n := range g.Neighbors {
 		if _, ok := seen[n.ID()]; ok {
 			continue
 		}
@@ -149,19 +108,12 @@ func (g *GraphNode) nodes(dst []graph.Node, seen map[int64]struct{}) []graph.Nod
 // From allows GraphNode to satisfy the graph.Graph interface.
 func (g *GraphNode) From(id int64) graph.Nodes {
 	if id == g.ID() {
-		return iterator.NewOrderedNodes(g.neighbors)
+		return iterator.NewOrderedNodes(g.Neighbors)
 	}
 
 	seen := map[int64]struct{}{g.id: {}}
-	for _, root := range g.roots {
-		seen[root.ID()] = struct{}{}
 
-		if result := root.findNeighbors(id, seen); result != nil {
-			return iterator.NewOrderedNodes(result)
-		}
-	}
-
-	for _, n := range g.neighbors {
+	for _, n := range g.Neighbors {
 		seen[n.ID()] = struct{}{}
 
 		if gn, ok := n.(*GraphNode); ok {
@@ -176,21 +128,10 @@ func (g *GraphNode) From(id int64) graph.Nodes {
 
 func (g *GraphNode) findNeighbors(id int64, seen map[int64]struct{}) []graph.Node {
 	if id == g.ID() {
-		return g.neighbors
+		return g.Neighbors
 	}
 
-	for _, root := range g.roots {
-		if _, ok := seen[root.ID()]; ok {
-			continue
-		}
-		seen[root.ID()] = struct{}{}
-
-		if result := root.findNeighbors(id, seen); result != nil {
-			return result
-		}
-	}
-
-	for _, n := range g.neighbors {
+	for _, n := range g.Neighbors {
 		if _, ok := seen[n.ID()]; ok {
 			continue
 		}
@@ -219,7 +160,7 @@ func (g *GraphNode) Edge(uid, vid int64) graph.Edge {
 // EdgeBetween allows GraphNode to satisfy the graph.Graph interface.
 func (g *GraphNode) EdgeBetween(uid, vid int64) graph.Edge {
 	if uid == g.id || vid == g.id {
-		for _, n := range g.neighbors {
+		for _, n := range g.Neighbors {
 			if n.ID() == uid || n.ID() == vid {
 				return simple.Edge{F: g, T: n}
 			}
@@ -229,14 +170,8 @@ func (g *GraphNode) EdgeBetween(uid, vid int64) graph.Edge {
 	}
 
 	seen := map[int64]struct{}{g.id: {}}
-	for _, root := range g.roots {
-		seen[root.ID()] = struct{}{}
-		if result := root.edgeBetween(uid, vid, seen); result != nil {
-			return result
-		}
-	}
 
-	for _, n := range g.neighbors {
+	for _, n := range g.Neighbors {
 		seen[n.ID()] = struct{}{}
 		if gn, ok := n.(*GraphNode); ok {
 			if result := gn.edgeBetween(uid, vid, seen); result != nil {
@@ -250,7 +185,7 @@ func (g *GraphNode) EdgeBetween(uid, vid int64) graph.Edge {
 
 func (g *GraphNode) edgeBetween(uid, vid int64, seen map[int64]struct{}) graph.Edge {
 	if uid == g.id || vid == g.id {
-		for _, n := range g.neighbors {
+		for _, n := range g.Neighbors {
 			if n.ID() == uid || n.ID() == vid {
 				return simple.Edge{F: g, T: n}
 			}
@@ -258,17 +193,7 @@ func (g *GraphNode) edgeBetween(uid, vid int64, seen map[int64]struct{}) graph.E
 		return nil
 	}
 
-	for _, root := range g.roots {
-		if _, ok := seen[root.ID()]; ok {
-			continue
-		}
-		seen[root.ID()] = struct{}{}
-		if result := root.edgeBetween(uid, vid, seen); result != nil {
-			return result
-		}
-	}
-
-	for _, n := range g.neighbors {
+	for _, n := range g.Neighbors {
 		if _, ok := seen[n.ID()]; ok {
 			continue
 		}
@@ -291,10 +216,5 @@ func (g *GraphNode) ID() int64 {
 
 // AddMeighbor adds an edge between g and n.
 func (g *GraphNode) AddNeighbor(n *GraphNode) {
-	g.neighbors = append(g.neighbors, graph.Node(n))
-}
-
-// AddRoot adds provides an entrance into the graph g from n.
-func (g *GraphNode) AddRoot(n *GraphNode) {
-	g.roots = append(g.roots, n)
+	g.Neighbors = append(g.Neighbors, graph.Node(n))
 }
