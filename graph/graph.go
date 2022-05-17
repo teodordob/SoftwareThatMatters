@@ -231,3 +231,20 @@ func CreateMap(arr []PackageInfo) map[int64]PackageInfo {
 func AddElementToMap(x PackageInfo, m map[int64]PackageInfo) {
 	m[int64(len(m))] = x
 }
+
+//func CreateHelperMap(m map[int64]PackageInfo) map[string]int64 {
+//	n := make(map[string]int64)
+//	for x, y := range m {
+//
+//	}
+//	return n
+//}
+
+func CreateGraph(m map[int64]PackageInfo) *simple.DirectedGraph {
+	graph := simple.NewDirectedGraph()
+	for x, _ := range m {
+		graph.AddNode(NewGraphNode(x))
+	}
+
+	return graph
+}

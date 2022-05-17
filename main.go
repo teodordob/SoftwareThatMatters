@@ -62,7 +62,15 @@ func main() {
 	as := g.PackageInfo{Name: "junit:junit", Versions: map[string]g.DependenciesInfo{"4.0.2": {"2022-10-11T15:19:50", map[string]string{"org.hamcrest:hamcrest-core": "1.3",
 		"org.hamcrest:hamcrest-library": "2.0"}}}}
 	var myarr = []g.PackageInfo{x, y, z}
+	//newgraph := simple.NewDirectedGraph()
+	//a1 := g.NewGraphNode(0)
+	//a2 := g.NewGraphNode(1)
+	//newgraph.SetEdge(newgraph.NewEdge(a1, a2))
+	//a1.AddNeighbor(a2)
+	//fmt.Println(newgraph.HasEdgeBetween(a1.ID(), a2.ID()))
 	m := g.CreateMap(myarr)
 	g.AddElementToMap(as, m)
-	fmt.Println(m)
+	g1 := g.CreateGraph(m)
+	fmt.Println(g1)
+	//fmt.Println(m)
 }
