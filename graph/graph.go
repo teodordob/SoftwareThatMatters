@@ -12,14 +12,14 @@ type GraphNode struct {
 	Neighbors []graph.Node
 }
 
-type OutputVersion struct {
+type DependenciesInfo struct {
 	TimeStamp    string            `json:"timestamp"`
 	Dependencies map[string]string `json:"dependencies"`
 }
 
-type VersionDependencies struct {
-	Name     string                   `json:"name"`
-	Versions map[string]OutputVersion `json:"versions"`
+type PackageInfo struct {
+	Name     string                      `json:"name"`
+	Versions map[string]DependenciesInfo `json:"versions"`
 }
 
 // NewGraphNode returns a new GraphNode.
@@ -41,7 +41,7 @@ func (g *GraphNode) Node(id int64) graph.Node {
 		}
 
 		if gn, ok := n.(*GraphNode); ok {
-			if gn.has(seen, id) {
+			if gn.Has(seen, id) {
 				return gn
 			}
 		}
@@ -50,7 +50,7 @@ func (g *GraphNode) Node(id int64) graph.Node {
 	return nil
 }
 
-func (g *GraphNode) has(seen map[int64]struct{}, id int64) bool {
+func (g *GraphNode) Has(seen map[int64]struct{}, id int64) bool {
 
 	for _, n := range g.Neighbors {
 		if _, ok := seen[n.ID()]; ok {
@@ -63,7 +63,7 @@ func (g *GraphNode) has(seen map[int64]struct{}, id int64) bool {
 		}
 
 		if gn, ok := n.(*GraphNode); ok {
-			if gn.has(seen, id) {
+			if gn.Has(seen, id) {
 				return true
 			}
 		}
@@ -117,7 +117,7 @@ func (g *GraphNode) From(id int64) graph.Nodes {
 		seen[n.ID()] = struct{}{}
 
 		if gn, ok := n.(*GraphNode); ok {
-			if result := gn.findNeighbors(id, seen); result != nil {
+			if result := gn.FindNeighbors(id, seen); result != nil {
 				return iterator.NewOrderedNodes(result)
 			}
 		}
@@ -126,7 +126,7 @@ func (g *GraphNode) From(id int64) graph.Nodes {
 	return nil
 }
 
-func (g *GraphNode) findNeighbors(id int64, seen map[int64]struct{}) []graph.Node {
+func (g *GraphNode) FindNeighbors(id int64, seen map[int64]struct{}) []graph.Node {
 	if id == g.ID() {
 		return g.Neighbors
 	}
@@ -138,7 +138,7 @@ func (g *GraphNode) findNeighbors(id int64, seen map[int64]struct{}) []graph.Nod
 		seen[n.ID()] = struct{}{}
 
 		if gn, ok := n.(*GraphNode); ok {
-			if result := gn.findNeighbors(id, seen); result != nil {
+			if result := gn.FindNeighbors(id, seen); result != nil {
 				return result
 			}
 		}
@@ -217,4 +217,17 @@ func (g *GraphNode) ID() int64 {
 // AddMeighbor adds an edge between g and n.
 func (g *GraphNode) AddNeighbor(n *GraphNode) {
 	g.Neighbors = append(g.Neighbors, graph.Node(n))
+}
+
+func CreateMap(arr []DependenciesInfo) map[int64]DependenciesInfo {
+	m := make(map[int64]DependenciesInfo)
+	var id int64 = 0
+	for n := range arr {
+		m[id] = arr[n]
+		id++
+	}
+	return m
+}
+func AddElementToMap(x DependenciesInfo, m map[int64]DependenciesInfo) {
+	m[int64(len(m))] = x
 }
