@@ -8,7 +8,7 @@ import (
 	"github.com/AJMBrands/SoftwareThatMatters/ingest"
 )
 
-const inPath string = "data/input.json"
+const inPath string = "data/in/input.json"
 
 const outPathTemplate string = "data/out/streamedout-%s.json"
 
@@ -26,5 +26,5 @@ func main() {
 	ingest.MergeJSON(outPathTemplate, amount)
 	runtime.ReadMemStats(&m2)
 	t2 = time.Now()
-	fmt.Printf("Took %d ms", t2.UnixMilli()-t1.UnixMilli())
+	fmt.Printf("Took %d ms\n", t2.UnixMilli()-t1.UnixMilli())
 }
