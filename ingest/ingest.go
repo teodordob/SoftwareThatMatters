@@ -109,15 +109,6 @@ func StreamParse(inPath string, jsonOutPathTemplate string) int {
 	f, _ := os.Open(inPath)
 	dec := json.NewDecoder(f)
 
-	// versionPath := strings.Replace(outPath, ".", ".versions.", 1)
-	// versionFile, err := os.OpenFile(versionPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
-
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
-	// versionWriter := csv.NewWriter(versionFile)
-
 	// Read opening bracket
 	if _, err := dec.Token(); err != nil {
 		log.Fatal(err)
