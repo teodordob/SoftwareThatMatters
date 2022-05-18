@@ -17,7 +17,7 @@ To ingest the data, run the following in the root directory:
    ./init.ps1
    ```
 
-   - On Unix systems (requires `curl` and `sed`):
+   - On unix systems (requires `curl` and `sed`):
 
    ```sh
    ./init.sh
@@ -28,3 +28,5 @@ To ingest the data, run the following in the root directory:
     ```sh
     go run .
     ```
+
+After running these commands, you'll end up with potentially hundreds of thousands of files in the format `streamedout-i.json` and one file that merges all these in the file `streamedout-merged.json`. The latter can then be used to generate a dependency graph.
