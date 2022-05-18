@@ -256,7 +256,7 @@ func CreateGraph(inputMap *map[int64]PackageInfo) *simple.DirectedGraph {
 	return graph
 }
 
-func ParseJSON(inPath string) []PackageInfo {
+func ParseJSON(inPath string) *[]PackageInfo {
 	var result []PackageInfo = make([]PackageInfo, 0, 10000)
 	f, err := os.Open(inPath)
 	if err != nil {
@@ -283,5 +283,5 @@ func ParseJSON(inPath string) []PackageInfo {
 	if _, err := dec.Token(); err != nil {
 		log.Fatal(err)
 	}
-	return result
+	return &result
 }
