@@ -217,6 +217,7 @@ func MergeJSON(inPathTemplate string, amount int) {
 		// If the input file was empty, move on
 		if len(currentData) < 1 {
 			fmt.Printf("\tFile %d was empty\n", i)
+			os.Remove(currentPath)
 			continue
 		}
 
@@ -229,7 +230,7 @@ func MergeJSON(inPathTemplate string, amount int) {
 			log.Fatal(err)
 		}
 		result = append(result, out)
-		//os.Remove(fmt.Sprintf(inPathTemplate, fmt.Sprint(i)))
+		os.Remove(currentPath)
 	}
 
 	enc.Encode(result)
