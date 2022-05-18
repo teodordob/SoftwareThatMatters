@@ -3,10 +3,7 @@ OUTFILE="data/in/input.json"
 N=$1
 URL=""
 
-if [ ! -d "data" ] # If data dir doesn't exist yet, create it
-then
-mkdir data && mkdir data/out
-fi
+mkdir -p data/in && mkdir -p data/out # If data dirs don't exist yet, create them
 
 # If the argument is empty or negative, just download all records
 if [ -z "$N" ] || [ "$N" -lt 0 ]
