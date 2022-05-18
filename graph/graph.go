@@ -238,6 +238,17 @@ func AddElementToMap(x PackageInfo, inputMap *map[int64]PackageInfo) {
 	m[int64(len(m))] = x
 }
 
+func CreateNameToIdMap(m *map[int64]PackageInfo) *map[string]int64 {
+	newMap := make(map[string]int64)
+	for id, key := range *m {
+		for versions, _ := range key.Versions {
+			newKey := key.Name + versions
+			newMap[newKey] = id
+		}
+	}
+	return &newMap
+}
+
 //func CreateHelperMap(m map[int64]PackageInfo) map[string]int64 {
 //	n := make(map[string]int64)
 //	for x, y := range m {
