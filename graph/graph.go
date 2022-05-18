@@ -1,6 +1,10 @@
 package graph
 
 import (
+	"encoding/json"
+	"log"
+	"os"
+
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/iterator"
 	"gonum.org/v1/gonum/graph/simple"
@@ -250,4 +254,34 @@ func CreateGraph(inputMap *map[int64]PackageInfo) *simple.DirectedGraph {
 	}
 
 	return graph
+}
+
+func ParseJSON(inPath string) []PackageInfo {
+	var result []PackageInfo = make([]PackageInfo, 0, 10000)
+	f, err := os.Open(inPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	dec := json.NewDecoder(f)
+
+	//Read opening bracket
+	if _, err := dec.Token(); err != nil {
+		log.Fatal(err)
+	}
+
+	for dec.More() {
+		var packageInfo PackageInfo
+
+		if err := dec.Decode(&packageInfo); err != nil {
+			log.Fatal(err)
+		}
+		result = append(result, packageInfo)
+	}
+
+	//Read closing bracket
+	if _, err := dec.Token(); err != nil {
+		log.Fatal(err)
+	}
+	return result
 }

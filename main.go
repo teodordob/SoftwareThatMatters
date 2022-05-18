@@ -22,5 +22,10 @@ func main() {
 	g.AddElementToMap(as, m)
 	g1 := g.CreateGraph(m)
 	fmt.Println(g1)
+
+	parsed := g.ParseJSON("data/out/processed.json")
+	m2 := g.CreateMap(parsed)
+	g2 := g.CreateGraph(m2)
+	fmt.Println(g2)
 	//fmt.Println(m)
 }
