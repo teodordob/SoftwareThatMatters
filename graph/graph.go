@@ -219,16 +219,18 @@ func (g *GraphNode) AddNeighbor(n *GraphNode) {
 	g.Neighbors = append(g.Neighbors, graph.Node(n))
 }
 
-func CreateMap(arr []PackageInfo) map[int64]PackageInfo {
+func CreateMap(in *[]PackageInfo) *map[int64]PackageInfo {
 	m := make(map[int64]PackageInfo)
 	var id int64 = 0
+	arr := *in
 	for n := range arr {
 		m[id] = arr[n]
 		id++
 	}
-	return m
+	return &m
 }
-func AddElementToMap(x PackageInfo, m map[int64]PackageInfo) {
+func AddElementToMap(x PackageInfo, inputMap *map[int64]PackageInfo) {
+	m := *inputMap
 	m[int64(len(m))] = x
 }
 
@@ -240,7 +242,8 @@ func AddElementToMap(x PackageInfo, m map[int64]PackageInfo) {
 //	return n
 //}
 
-func CreateGraph(m map[int64]PackageInfo) *simple.DirectedGraph {
+func CreateGraph(inputMap *map[int64]PackageInfo) *simple.DirectedGraph {
+	m := *inputMap
 	graph := simple.NewDirectedGraph()
 	for x, _ := range m {
 		graph.AddNode(NewGraphNode(x))
