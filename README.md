@@ -29,4 +29,4 @@ To ingest the data, run the following in the root directory:
     go run .
     ```
 
-After running these commands, you'll end up with potentially hundreds of thousands of files in the format `streamedout-i.json` and one file that merges all these in the file `streamedout-merged.json`. The latter can then be used to generate a dependency graph.
+After running these commands, you'll end up with a file containing the transformed dependencies (`streamedout-merged.json`). This file can then be used to generate a dependency graph.
