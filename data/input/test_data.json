@@ -1,0 +1,34 @@
+[
+  {
+    "name": "B",
+    "versions": {
+      "1.0.0": {
+        "timestamp": "2021-04-22T20:15:37",
+        "dependencies": {
+          "A": "1.0.0",
+          "C": "1.0.0"
+        }
+      }
+    }
+  },
+  {
+    "name": "C",
+    "versions": {
+      "1.0.0": {
+        "timestamp": "2021-04-22T20:15:37",
+        "dependencies": {
+          "A": "1.0.0"
+        }
+      }
+    }
+  },
+  {
+    "name": "A",
+    "versions": {
+      "1.0.0": {
+        "timestamp": "2021-04-22T20:15:37",
+        "dependencies": {}
+      }
+    }
+  }
+]

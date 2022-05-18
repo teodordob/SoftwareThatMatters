@@ -2,6 +2,7 @@ package graph
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 
@@ -238,11 +239,11 @@ func AddElementToMap(x PackageInfo, inputMap *map[int64]PackageInfo) {
 	m[int64(len(m))] = x
 }
 
-func CreateNameToIdMap(m *map[int64]PackageInfo) *map[string]int64 {
+func CreateNameToIDMap(m *map[int64]PackageInfo) *map[string]int64 {
 	newMap := make(map[string]int64)
 	for id, key := range *m {
 		for versions, _ := range key.Versions {
-			newKey := key.Name + versions
+			newKey := fmt.Sprintf("%s-%s", key.Name, versions)
 			newMap[newKey] = id
 		}
 	}
@@ -263,8 +264,25 @@ func CreateGraph(inputMap *map[int64]PackageInfo) *simple.DirectedGraph {
 	for x, _ := range m {
 		graph.AddNode(NewGraphNode(x))
 	}
-
 	return graph
+}
+
+// CreateEdges takes a graph, a list of packages and their dependencies and a map of package names to package IDs
+// and creates directed edges between the dependent library and its dependencies.
+func CreateEdges(graph *simple.DirectedGraph, inputMap *map[int64]PackageInfo, nameToIDMap *map[string]int64) {
+	packageInfo := *inputMap
+	nameToID := *nameToIDMap
+	for id, packageInfo := range packageInfo {
+		for _, dependencyInfo := range packageInfo.Versions {
+			for dependencyName, dependencyVersion := range dependencyInfo.Dependencies {
+				dependencyNameVersionString := fmt.Sprintf("%s-%s", dependencyName, dependencyVersion)
+				dependencyNode := graph.Node(nameToID[dependencyNameVersionString])
+				packageNode := graph.Node(id)
+				newEdge := graph.NewEdge(packageNode, dependencyNode)
+				graph.SetEdge(newEdge)
+			}
+		}
+	}
 }
 
 func ParseJSON(inPath string) *[]PackageInfo {
