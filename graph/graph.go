@@ -224,9 +224,9 @@ func (g *GraphNode) AddNeighbor(n *GraphNode) {
 }
 
 func CreateMap(in *[]PackageInfo) *map[int64]PackageInfo {
-	m := make(map[int64]PackageInfo)
 	var id int64 = 0
 	arr := *in
+	m := make(map[int64]PackageInfo, len(arr))
 	for n := range arr {
 		m[id] = arr[n]
 		id++
