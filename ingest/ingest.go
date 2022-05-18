@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	jsoniter "github.com/json-iterator/go"
 )
 
 type OutputVersion struct {
@@ -202,7 +204,7 @@ func MergeJSON(inPathTemplate string, amount int) {
 	fmt.Println("Starting file merge process")
 	var result []OutputFormat = make([]OutputFormat, 0, amount)
 	outFile, err := os.OpenFile(fmt.Sprintf(inPathTemplate, "merged"), os.O_CREATE|os.O_WRONLY, 0644)
-	enc := json.NewEncoder(outFile)
+	enc := jsoniter.NewEncoder(outFile)
 
 	if err != nil {
 		log.Fatal(err)
@@ -223,7 +225,7 @@ func MergeJSON(inPathTemplate string, amount int) {
 		}
 
 		var out OutputFormat
-		if err := json.Unmarshal(currentData, &out); err != nil {
+		if err := jsoniter.Unmarshal(currentData, &out); err != nil {
 			log.Fatal(err)
 		}
 		result = append(result, out)
