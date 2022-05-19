@@ -12,10 +12,13 @@ To ingest the data, run the following in the root directory:
 
 1. First run:
    - On Windows (requires wsl with some unix distro installed and with `curl` and `sed`):
-  
-   ```sh
-   ./init.ps1
-   ```
+    ```sh
+    ./init.ps1
+    ```
+    (If you want only `n` packages:)
+    ```sh
+    ./init.ps1 n
+    ```
 
    - On unix systems (requires `curl` and `sed`):
 
