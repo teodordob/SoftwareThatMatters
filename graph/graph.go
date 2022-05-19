@@ -17,19 +17,33 @@ type GraphNode struct {
 	Neighbors []graph.Node
 }
 
-type DependenciesInfo struct {
-	TimeStamp    string            `json:"timestamp"`
+type VersionInfo struct {
+	Timestamp    string            `json:"timestamp"`
 	Dependencies map[string]string `json:"dependencies"`
 }
 
 type PackageInfo struct {
-	Name     string                      `json:"name"`
-	Versions map[string]DependenciesInfo `json:"versions"`
+	Name     string                 `json:"name"`
+	Versions map[string]VersionInfo `json:"versions"`
 }
 
-type NodeInfo struct {
-	Name         string
-	Dependencies map[string]string
+// Type structure for nodes. Name and Version can be removed if we find we don't use them often enough
+type nodeInfo struct {
+	id        string
+	Name      string
+	Version   string
+	Timestamp string
+}
+
+// NodeInfo constructs a nodeInfo structure and automatically fills the id. This might not be the proper way to
+// do it in Go so feel free to change this to a more idiomatic version.
+func NodeInfo(name, version, timestamp string) *nodeInfo {
+	return &nodeInfo{
+		id:        fmt.Sprintf("%s-%s", name, version),
+		Name:      name,
+		Version:   version,
+		Timestamp: timestamp,
+	}
 }
 
 // NewGraphNode returns a new GraphNode.
@@ -229,28 +243,28 @@ func (g *GraphNode) AddNeighbor(n *GraphNode) {
 	g.Neighbors = append(g.Neighbors, graph.Node(n))
 }
 
-func CreateMap(in *[]PackageInfo) *map[int64]NodeInfo {
+func CreateMap(in *[]PackageInfo) *map[int64]nodeInfo {
 	var id int64 = 0
-	arr := *in
-	m := make(map[int64]NodeInfo, len(arr))
-	for n := range arr {
-		for _, value := range arr[n].Versions {
-			newEntry := fmt.Sprintf("%s-%s", arr[n].Name, value)
-			m[id] = NodeInfo{newEntry, value.Dependencies}
+	packagesInfo := *in
+	m := make(map[int64]nodeInfo, len(packagesInfo))
+	for _, packageInfo := range packagesInfo {
+		for packageVersion, versionInfo := range packageInfo.Versions {
+			m[id] = *NodeInfo(packageInfo.Name, packageVersion, versionInfo.Timestamp)
 			id++
 		}
 	}
 	return &m
 }
+
 func AddElementToMap(x PackageInfo, inputMap *map[int64]PackageInfo) {
 	m := *inputMap
 	m[int64(len(m))] = x
 }
 
-func CreateNameToIDMap(m *map[int64]NodeInfo) *map[string]int64 {
-	newMap := make(map[string]int64)
+func CreateNameToIDMap(m *map[int64]nodeInfo) *map[string]int64 {
+	newMap := make(map[string]int64, len(*m))
 	for id, key := range *m {
-		newMap[key.Name] = id
+		newMap[key.id] = id
 	}
 	return &newMap
 }
@@ -263,10 +277,10 @@ func CreateNameToIDMap(m *map[int64]NodeInfo) *map[string]int64 {
 //	return n
 //}
 
-func CreateGraph(inputMap *map[int64]NodeInfo) *simple.DirectedGraph {
+func CreateGraph(inputMap *map[int64]nodeInfo) *simple.DirectedGraph {
 	m := *inputMap
 	graph := simple.NewDirectedGraph()
-	for x, _ := range m {
+	for x := range m {
 		graph.AddNode(NewGraphNode(x))
 	}
 	return graph
@@ -274,24 +288,23 @@ func CreateGraph(inputMap *map[int64]NodeInfo) *simple.DirectedGraph {
 
 // CreateEdges takes a graph, a list of packages and their dependencies and a map of package names to package IDs
 // and creates directed edges between the dependent library and its dependencies.
-func CreateEdges(graph *simple.DirectedGraph, inputMap *map[int64]PackageInfo, nameToIDMap *map[string]int64) {
-	packageInfo := *inputMap
+func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, nameToIDMap *map[string]int64) {
+	packagesInfo := *inputList
 	nameToID := *nameToIDMap
-	for id, packageInfo := range packageInfo {
+	for id, packageInfo := range packagesInfo {
 		for _, dependencyInfo := range packageInfo.Versions {
 			for dependencyName, dependencyVersion := range dependencyInfo.Dependencies {
 				dependencyNameVersionString := fmt.Sprintf("%s-%s", dependencyName, dependencyVersion)
 				dependencyNode := graph.Node(nameToID[dependencyNameVersionString])
-				packageNode := graph.Node(id)
-				newEdge := graph.NewEdge(packageNode, dependencyNode)
-				graph.SetEdge(newEdge)
+				packageNode := graph.Node(int64(id))
+				graph.SetEdge(simple.Edge{F: packageNode, T: dependencyNode})
 			}
 		}
 	}
 }
 
 func ParseJSON(inPath string) *[]PackageInfo {
-	var result []PackageInfo = make([]PackageInfo, 0, 10000)
+	result := make([]PackageInfo, 0, 10000)
 	f, err := os.Open(inPath)
 	if err != nil {
 		log.Fatal(err)
