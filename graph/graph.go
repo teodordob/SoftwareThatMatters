@@ -27,6 +27,11 @@ type PackageInfo struct {
 	Versions map[string]DependenciesInfo `json:"versions"`
 }
 
+type NodeInfo struct {
+	Name         string
+	Dependencies map[string]string
+}
+
 // NewGraphNode returns a new GraphNode.
 func NewGraphNode(id int64) *GraphNode {
 	return &GraphNode{id: id}
@@ -224,13 +229,16 @@ func (g *GraphNode) AddNeighbor(n *GraphNode) {
 	g.Neighbors = append(g.Neighbors, graph.Node(n))
 }
 
-func CreateMap(in *[]PackageInfo) *map[int64]PackageInfo {
+func CreateMap(in *[]PackageInfo) *map[int64]NodeInfo {
 	var id int64 = 0
 	arr := *in
-	m := make(map[int64]PackageInfo, len(arr))
+	m := make(map[int64]NodeInfo, len(arr))
 	for n := range arr {
-		m[id] = arr[n]
-		id++
+		for _, value := range arr[n].Versions {
+			newEntry := fmt.Sprintf("%s-%s", arr[n].Name, value)
+			m[id] = NodeInfo{newEntry, value.Dependencies}
+			id++
+		}
 	}
 	return &m
 }
@@ -239,13 +247,10 @@ func AddElementToMap(x PackageInfo, inputMap *map[int64]PackageInfo) {
 	m[int64(len(m))] = x
 }
 
-func CreateNameToIDMap(m *map[int64]PackageInfo) *map[string]int64 {
+func CreateNameToIDMap(m *map[int64]NodeInfo) *map[string]int64 {
 	newMap := make(map[string]int64)
 	for id, key := range *m {
-		for versions, _ := range key.Versions {
-			newKey := fmt.Sprintf("%s-%s", key.Name, versions)
-			newMap[newKey] = id
-		}
+		newMap[key.Name] = id
 	}
 	return &newMap
 }
@@ -258,7 +263,7 @@ func CreateNameToIDMap(m *map[int64]PackageInfo) *map[string]int64 {
 //	return n
 //}
 
-func CreateGraph(inputMap *map[int64]PackageInfo) *simple.DirectedGraph {
+func CreateGraph(inputMap *map[int64]NodeInfo) *simple.DirectedGraph {
 	m := *inputMap
 	graph := simple.NewDirectedGraph()
 	for x, _ := range m {
