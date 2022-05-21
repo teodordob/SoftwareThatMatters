@@ -143,7 +143,7 @@ func StreamParse(inPath string, jsonOutPathTemplate string) int {
 		}
 		jsonPath := fmt.Sprintf(jsonOutPathTemplate, fmt.Sprint(i)) // Append a number to filePath
 		wg.Add(1)                                                   // Tell the WaitGroup it needs to wait for one more
-		go func(vds *[]VersionDependencies, jsonPath string) {
+		func(vds *[]VersionDependencies, jsonPath string) {
 			defer wg.Done() // Tell the WaitGroup this task is done after the function below is done
 			writeToFileJSON(vds, jsonPath)
 		}(&vds, jsonPath)
