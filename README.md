@@ -12,12 +12,15 @@ To ingest the data, run the following in the root directory:
 
 1. First run:
    - On Windows (requires wsl with some unix distro installed and with `wget` and `sed`):
+
     ```sh
     ./init.ps1
     ```
-    (If you want only `n` packages:)
+
+    (If you want only n packages: [example with n = 10000])
+
     ```sh
-    ./init.ps1 n
+    ./init.ps1 10000
     ```
 
    - On unix systems (requires `wget` and `sed`):
@@ -25,6 +28,12 @@ To ingest the data, run the following in the root directory:
    ```sh
    ./init.sh
    ```
+
+    (If you want only n packages: [example with n = 10000])
+
+    ```sh
+    ./init.sh 10000
+    ```
 
 2. Then run the following:
 
