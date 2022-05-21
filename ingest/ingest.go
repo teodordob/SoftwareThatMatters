@@ -216,7 +216,7 @@ func MergeJSON(inPathTemplate string, amount int) {
 
 		// If the input file was empty, move on
 		if len(currentData) < 1 {
-			fmt.Printf("\tFile %d was empty\n", i)
+			fmt.Printf("\tFile %d didn't contain versions object\n", i)
 			os.Remove(currentPath)
 			continue
 		}
