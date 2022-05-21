@@ -14,5 +14,5 @@ URL="https://replicate.npmjs.com/_all_docs?include_docs=true&limit=${N}"
 fi
 # The following script downloads the npm data dump and then projects so that we only have the rows entries
 echo "Starting download..."
-curl "$URL" > $OUTFILE && echo "Starting preprocessing..." && sed --regexp-extended -i 's/\{"total_rows":.*,"offset":.*,"rows":\[/[/;s/\]}$/\]/' $OUTFILE && echo "Done!"
+wget -O "$OUTFILE" "$URL" && echo "Starting preprocessing..." && sed --regexp-extended -i 's/\{"total_rows":.*,"offset":.*,"rows":\[/[/;s/\]}$/\]/' $OUTFILE && echo "Done!"
 

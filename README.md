@@ -11,7 +11,7 @@ go mod download
 To ingest the data, run the following in the root directory:
 
 1. First run:
-   - On Windows (requires wsl with some unix distro installed and with `curl` and `sed`):
+   - On Windows (requires wsl with some unix distro installed and with `wget` and `sed`):
     ```sh
     ./init.ps1
     ```
@@ -20,7 +20,7 @@ To ingest the data, run the following in the root directory:
     ./init.ps1 n
     ```
 
-   - On unix systems (requires `curl` and `sed`):
+   - On unix systems (requires `wget` and `sed`):
 
    ```sh
    ./init.sh
