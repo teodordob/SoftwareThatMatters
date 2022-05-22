@@ -241,6 +241,8 @@ func MergeJSON(inPathTemplate string, amount int) {
 
 		if _, err := outFile.Write(finalData); err != nil {
 			log.Fatal("Couldn't write sequence to file")
+		} else {
+			os.Remove(currentPath) // Remove successfully merged file
 		}
 		// var out OutputFormat
 		// if err := jsoniter.Unmarshal(currentData, &out); err != nil {
