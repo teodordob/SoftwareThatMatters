@@ -206,9 +206,7 @@ func writeToFileJSON(vdAddr *[]VersionDependencies, outPath string) {
 func MergeJSON(inPathTemplate string, amount int) {
 	const comma string = ","
 	fmt.Println("Starting file merge process")
-	// var result []OutputFormat = make([]OutputFormat, 0, amount)
 	outFile, err := os.OpenFile(fmt.Sprintf(inPathTemplate, "merged"), os.O_CREATE|os.O_WRONLY, 0644)
-	// enc := jsoniter.NewEncoder(outFile)
 
 	if err != nil {
 		log.Fatal(err)
@@ -235,7 +233,7 @@ func MergeJSON(inPathTemplate string, amount int) {
 
 		finalData := currentData
 
-		if i < amount-1 {
+		if i < amount-1 { // Append a comma after entry if we're not on the last entry
 			finalData = append(finalData, comma...)
 		}
 
@@ -244,15 +242,8 @@ func MergeJSON(inPathTemplate string, amount int) {
 		} else {
 			os.Remove(currentPath) // Remove successfully merged file
 		}
-		// var out OutputFormat
-		// if err := jsoniter.Unmarshal(currentData, &out); err != nil {
-		// 	log.Fatal(err)
-		// }
-		// result = append(result, out)
-		// os.Remove(currentPath)
 	}
 
 	outFile.WriteString("]\n")
-	// enc.Encode(result)
 	fmt.Println("Merged JSON files")
 }
