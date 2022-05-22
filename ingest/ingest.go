@@ -106,6 +106,8 @@ func (d Dependency) String() string {
 func StreamParse(inPath string, jsonOutPathTemplate string) int {
 	fmt.Println("Starting input JSON parser...")
 	var wg sync.WaitGroup
+	maxGoRoutines := 5000
+	guard := make(chan int, maxGoRoutines)
 	f, _ := os.Open(inPath)
 	dec := json.NewDecoder(f)
 
@@ -140,10 +142,12 @@ func StreamParse(inPath string, jsonOutPathTemplate string) int {
 			vds = append(vds, vd)
 		}
 		jsonPath := fmt.Sprintf(jsonOutPathTemplate, fmt.Sprint(i)) // Append a number to filePath
-		wg.Add(1)                                                   // Tell the WaitGroup it needs to wait for one more
-		func(vds *[]VersionDependencies, jsonPath string) {
+		wg.Add(1)                                                   // The waitGroup needs to wait for one more
+		guard <- 0                                                  // Add one thread to the amount of running threads
+		go func(vds *[]VersionDependencies, jsonPath string) {
 			defer wg.Done() // Tell the WaitGroup this task is done after the function below is done
 			writeToFileJSON(vds, jsonPath)
+			<-guard // One thread was freed, now another can start
 		}(&vds, jsonPath)
 
 		i++
@@ -153,6 +157,7 @@ func StreamParse(inPath string, jsonOutPathTemplate string) int {
 		log.Fatal(err)
 	}
 	wg.Wait() // Wait for all subroutines to be done
+	close(guard)
 	fmt.Println("JSON parsing done")
 	return i
 }
@@ -199,18 +204,27 @@ func writeToFileJSON(vdAddr *[]VersionDependencies, outPath string) {
 }
 
 func MergeJSON(inPathTemplate string, amount int) {
+	const comma string = ","
 	fmt.Println("Starting file merge process")
-	var result []OutputFormat = make([]OutputFormat, 0, amount)
+	// var result []OutputFormat = make([]OutputFormat, 0, amount)
 	outFile, err := os.OpenFile(fmt.Sprintf(inPathTemplate, "merged"), os.O_CREATE|os.O_WRONLY, 0644)
-	enc := jsoniter.NewEncoder(outFile)
+	// enc := jsoniter.NewEncoder(outFile)
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	defer outFile.Close()
+
+	outFile.WriteString("[\n")
+
 	for i := 0; i < amount; i++ {
 		currentPath := fmt.Sprintf(inPathTemplate, fmt.Sprint(i))
 		currentData, err := os.ReadFile(currentPath)
+
+		if err != nil {
+			log.Fatal(err)
+		}
 
 		// If the input file was empty, move on
 		if len(currentData) < 1 {
@@ -219,18 +233,24 @@ func MergeJSON(inPathTemplate string, amount int) {
 			continue
 		}
 
-		if err != nil {
-			log.Fatal(err)
+		finalData := currentData
+
+		if i < amount-1 {
+			finalData = append(finalData, comma...)
 		}
 
-		var out OutputFormat
-		if err := jsoniter.Unmarshal(currentData, &out); err != nil {
-			log.Fatal(err)
+		if _, err := outFile.Write(finalData); err != nil {
+			log.Fatal("Couldn't write sequence to file")
 		}
-		result = append(result, out)
-		os.Remove(currentPath)
+		// var out OutputFormat
+		// if err := jsoniter.Unmarshal(currentData, &out); err != nil {
+		// 	log.Fatal(err)
+		// }
+		// result = append(result, out)
+		// os.Remove(currentPath)
 	}
 
-	enc.Encode(result)
+	outFile.WriteString("]\n")
+	// enc.Encode(result)
 	fmt.Println("Merged JSON files")
 }
