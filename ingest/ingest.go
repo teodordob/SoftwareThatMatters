@@ -8,8 +8,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	jsoniter "github.com/json-iterator/go"
 )
 
 type OutputVersion struct {
