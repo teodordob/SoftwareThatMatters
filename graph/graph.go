@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"strings"
 
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/iterator"
@@ -339,35 +338,21 @@ func ParseJSON(inPath string) *[]PackageInfo {
 }
 
 func findSemVerConstraintNPM(name, versionConstraint string, packageMap *map[int64]nodeInfo) *[]int64 {
-	// List to store the indices of the versions that passed the semver check
 	var result []int64
-	// Map to store what key the versions had in the original map
-	var versionToKey map[string]int64 = make(map[string]int64)
-	// A list of arguments to semver
-	var arguments []string = []string{"run", "semver", versionConstraint}
-	// All the versions to check with the semver constraint
-	var checkVersions []string
-	for k, v := range *packageMap {
+	// A list of version strings, with the first one in the list being the specified versionConstraint
+	var arguments []string = []string{versionConstraint}
+
+	for _, v := range *packageMap {
 		if v.Name == name {
-			ver := v.Version
-			checkVersions = append(checkVersions, ver)
-			versionToKey[ver] = k
+			arguments = append(arguments, v.Version)
 		}
 	}
 
-	arguments = append(arguments, checkVersions...)
-
-	out, err := exec.Command("yarn", arguments...).Output()
+	_, err := exec.Command("yarn run semver", arguments...).Output()
 	if err != nil {
 		log.Fatal("Couldn't run semver")
 	}
-
-	output := string(out[:])
-	versionList := strings.Split(output, "\n")
-
-	for _, version := range versionList {
-		result = append(result, versionToKey[version])
-	}
+	//TODO: Do something with the data
 
 	return &result
 }
