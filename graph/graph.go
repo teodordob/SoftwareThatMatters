@@ -304,7 +304,10 @@ func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, nameToID
 }
 
 func ParseJSON(inPath string) *[]PackageInfo {
-	result := make([]PackageInfo, 0, 10000)
+	// For NPM at least, about 2 million packages are expected, so we initialize so the array doesn't have to be re-allocated all the time
+	const expectedAmount int = 2000000
+	// An array for now since lists aren't type-safe, and they would overcomplicate things
+	result := make([]PackageInfo, 0, expectedAmount)
 	f, err := os.Open(inPath)
 	if err != nil {
 		log.Fatal(err)
