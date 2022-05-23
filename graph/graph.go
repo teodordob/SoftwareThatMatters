@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
 
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/iterator"
@@ -16,6 +15,10 @@ import (
 type GraphNode struct {
 	id        int64
 	Neighbors []graph.Node
+}
+
+type NPMConstraint struct {
+	VersionConstraint string
 }
 
 type VersionInfo struct {
@@ -337,22 +340,19 @@ func ParseJSON(inPath string) *[]PackageInfo {
 	return &result
 }
 
-func findSemVerConstraintNPM(name, versionConstraint string, packageMap *map[int64]nodeInfo) *[]int64 {
-	var result []int64
-	// A list of version strings, with the first one in the list being the specified versionConstraint
-	var arguments []string = []string{versionConstraint}
+func findSatisfyingConstraintNPM(name string, constraint NPMConstraint, packageMap *map[int64]nodeInfo) *[]int64 {
+	result := make([]int64, 0, 64)
+	packages := *packageMap
 
-	for _, v := range *packageMap {
-		if v.Name == name {
-			arguments = append(arguments, v.Version)
+	for k, v := range packages {
+		if satisfiesConstraintNPM(v, constraint) {
+			result = append(result, k)
 		}
 	}
-
-	_, err := exec.Command("yarn run semver", arguments...).Output()
-	if err != nil {
-		log.Fatal("Couldn't run semver")
-	}
-	//TODO: Do something with the data
-
 	return &result
+}
+
+// TODO: Add actual semver possibly using semver.js
+func satisfiesConstraintNPM(info nodeInfo, constraint NPMConstraint) bool {
+	return true
 }
