@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"gonum.org/v1/gonum/graph"
+	"gonum.org/v1/gonum/graph/encoding/dot"
 	"gonum.org/v1/gonum/graph/iterator"
 	"gonum.org/v1/gonum/graph/simple"
 )
@@ -284,6 +285,22 @@ func CreateGraph(inputMap *map[int64]nodeInfo) *simple.DirectedGraph {
 		graph.AddNode(NewGraphNode(x))
 	}
 	return graph
+}
+
+//Function to write the simple graph to a dot file so it could be visualized with GraphViz
+//TODO Find out how to add the labels to the nodes
+func Visualization(graph *simple.DirectedGraph, name string) {
+	result, _ := dot.Marshal(graph, name, "", "  ")
+
+	file, err := os.Create(name + ".dot")
+
+	if err != nil {
+		log.Fatal("Error!", err)
+	}
+	defer file.Close()
+
+	fmt.Fprintf(file, string(result))
+
 }
 
 // CreateEdges takes a graph, a list of packages and their dependencies and a map of package names to package IDs
