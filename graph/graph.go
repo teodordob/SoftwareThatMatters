@@ -363,7 +363,7 @@ func findSemVerConstraintNPM(name, versionConstraint string, packageMap *map[int
 	}
 
 	output := string(out[:])
-	versionList := strings.Split(output, "\n")
+	versionList := strings.Split(strings.ReplaceAll(output, "\r\n", "\n"), "\n")
 
 	for _, version := range versionList {
 		result = append(result, versionToKey[version])
