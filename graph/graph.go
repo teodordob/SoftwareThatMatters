@@ -17,10 +17,6 @@ type GraphNode struct {
 	Neighbors []graph.Node
 }
 
-type NPMConstraint struct {
-	VersionConstraint string
-}
-
 type VersionInfo struct {
 	Timestamp    string            `json:"timestamp"`
 	Dependencies map[string]string `json:"dependencies"`
@@ -338,21 +334,4 @@ func ParseJSON(inPath string) *[]PackageInfo {
 		log.Fatal(err)
 	}
 	return &result
-}
-
-func findSatisfyingConstraintNPM(name string, constraint NPMConstraint, packageMap *map[int64]nodeInfo) *[]int64 {
-	result := make([]int64, 0, 64)
-	packages := *packageMap
-
-	for k, v := range packages {
-		if satisfiesConstraintNPM(v, constraint) {
-			result = append(result, k)
-		}
-	}
-	return &result
-}
-
-// TODO: Add actual semver possibly using semver.js
-func satisfiesConstraintNPM(info nodeInfo, constraint NPMConstraint) bool {
-	return true
 }
