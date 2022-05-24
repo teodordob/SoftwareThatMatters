@@ -3,6 +3,7 @@ package graph
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/Masterminds/semver"
 	"log"
 	"os"
 
@@ -273,6 +274,17 @@ func CreateNameToIDMap(m *map[int64]nodeInfo) *map[string]int64 {
 	return &newMap
 }
 
+func CreateNameToVersionMap(m *[]PackageInfo) *map[string][]string {
+	newMap := make(map[string][]string, len(*m))
+	for _, value := range *m {
+		name := value.Name
+		for k, _ := range value.Versions {
+			newMap[name] = append(newMap[name], k)
+		}
+	}
+	return &newMap
+}
+
 //func CreateHelperMap(m map[int64]PackageInfo) map[string]int64 {
 //	n := make(map[string]int64)
 //	for x, y := range m {
@@ -292,16 +304,27 @@ func CreateGraph(inputMap *map[int64]nodeInfo) *simple.DirectedGraph {
 
 // CreateEdges takes a graph, a list of packages and their dependencies and a map of package names to package IDs
 // and creates directed edges between the dependent library and its dependencies.
-func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, nameToIDMap *map[string]int64) {
+func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, nameToIDMap *map[string]int64, nameToVersionMap *map[string][]string) {
 	packagesInfo := *inputList
 	nameToID := *nameToIDMap
+	nameToVersion := *nameToVersionMap
 	for id, packageInfo := range packagesInfo {
 		for _, dependencyInfo := range packageInfo.Versions {
 			for dependencyName, dependencyVersion := range dependencyInfo.Dependencies {
-				dependencyNameVersionString := fmt.Sprintf("%s-%s", dependencyName, dependencyVersion)
-				dependencyNode := graph.Node(nameToID[dependencyNameVersionString])
-				packageNode := graph.Node(int64(id))
-				graph.SetEdge(simple.Edge{F: packageNode, T: dependencyNode})
+				c, err := semver.NewConstraint(dependencyVersion)
+				if err != nil {
+					fmt.Println("NU MERGE PARSEUL DE SEMVER MANCATZAS")
+				}
+				for _, v := range nameToVersion[dependencyName] {
+					newVersion, _ := semver.NewVersion(v)
+					constrBool := c.Check(newVersion)
+					if constrBool {
+						dependencyNameVersionString := fmt.Sprintf("%s-%s", dependencyName, v)
+						dependencyNode := graph.Node(nameToID[dependencyNameVersionString])
+						packageNode := graph.Node(int64(id))
+						graph.SetEdge(simple.Edge{F: packageNode, T: dependencyNode})
+					}
+				}
 			}
 		}
 	}

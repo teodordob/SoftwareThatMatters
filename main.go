@@ -26,9 +26,10 @@ func main() {
 	parsed := g.ParseJSON("data/input/test_data.json")
 	m2 := g.CreateMap(parsed)
 	nameToIdMap := g.CreateNameToIDMap(m2)
+	nameToVersionMap := g.CreateNameToVersionMap(parsed)
 	g2 := g.CreateGraph(m2)
 	//fmt.Println(g2)
-	g.CreateEdges(g2, parsed, nameToIdMap)
+	g.CreateEdges(g2, parsed, nameToIdMap, nameToVersionMap)
 
 	fmt.Println(m2)
 	fmt.Println(nameToIdMap)
