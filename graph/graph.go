@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"gonum.org/v1/gonum/graph"
+	"gonum.org/v1/gonum/graph/encoding/dot"
 	"gonum.org/v1/gonum/graph/iterator"
 	"gonum.org/v1/gonum/graph/simple"
 )
@@ -16,10 +17,6 @@ import (
 type GraphNode struct {
 	id        int64
 	Neighbors []graph.Node
-}
-
-type NPMConstraint struct {
-	VersionConstraint string
 }
 
 type VersionInfo struct {
@@ -302,6 +299,22 @@ func CreateGraph(inputMap *map[int64]nodeInfo) *simple.DirectedGraph {
 	return graph
 }
 
+//Function to write the simple graph to a dot file so it could be visualized with GraphViz
+//TODO Find out how to add the labels to the nodes
+func Visualization(graph *simple.DirectedGraph, name string) {
+	result, _ := dot.Marshal(graph, name, "", "  ")
+
+	file, err := os.Create(name + ".dot")
+
+	if err != nil {
+		log.Fatal("Error!", err)
+	}
+	defer file.Close()
+
+	fmt.Fprintf(file, string(result))
+
+}
+
 // CreateEdges takes a graph, a list of packages and their dependencies and a map of package names to package IDs
 // and creates directed edges between the dependent library and its dependencies.
 func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, nameToIDMap *map[string]int64, nameToVersionMap *map[string][]string) {
@@ -361,21 +374,4 @@ func ParseJSON(inPath string) *[]PackageInfo {
 		log.Fatal(err)
 	}
 	return &result
-}
-
-func findSatisfyingConstraintNPM(name string, constraint NPMConstraint, packageMap *map[int64]nodeInfo) *[]int64 {
-	result := make([]int64, 0, 64)
-	packages := *packageMap
-
-	for k, v := range packages {
-		if satisfiesConstraintNPM(v, constraint) {
-			result = append(result, k)
-		}
-	}
-	return &result
-}
-
-// TODO: Add actual semver possibly using semver.js
-func satisfiesConstraintNPM(info nodeInfo, constraint NPMConstraint) bool {
-	return true
 }
