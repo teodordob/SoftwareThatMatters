@@ -113,9 +113,13 @@ func StreamParse(inPath string, jsonOutPathTemplate string) int {
 	f, _ := os.Open(inPath)
 	dec := json.NewDecoder(f)
 
-	// Read opening bracket
-	if _, err := dec.Token(); err != nil {
-		log.Fatal(err)
+	/** Read opening brackets and useless stuff, i.e.:
+	* - "{"total_rows":1972547,"offset":0,"rows":["
+	**/
+	for i := 0; i < 7; i++ {
+		if _, err := dec.Token(); err != nil {
+			log.Fatal(err)
+		}
 	}
 	// While the decoder says there is more to parse, parse JSON entries and print them one-by-one
 	i := 0
@@ -155,9 +159,13 @@ func StreamParse(inPath string, jsonOutPathTemplate string) int {
 
 		i++
 	}
-	// Read closing bracket
-	if _, err := dec.Token(); err != nil {
-		log.Fatal(err)
+	/** Read closing brackets, i.e.:
+	* "]}"
+	**/
+	for i := 0; i < 2; i++ {
+		if _, err := dec.Token(); err != nil {
+			log.Fatal(err)
+		}
 	}
 	wg.Wait() // Wait for all subroutines to be done
 	close(guard)
