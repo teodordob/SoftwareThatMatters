@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 	"sync"
 	"time"
 )
@@ -121,7 +120,8 @@ func StreamParse(inPath string, jsonOutPathTemplate string) int {
 		var e Entry
 
 		if err := dec.Decode(&e); err != nil {
-			log.Fatal(err)
+			log.Println(err)
+			continue // Just move on and skip this entry
 		}
 		timeStamps := e.Doc.Time
 
@@ -221,7 +221,8 @@ func MergeJSON(inPathTemplate string, amount int) {
 		currentData, err := os.ReadFile(currentPath)
 
 		if err != nil {
-			log.Fatal(err)
+			log.Println(err) // Just skip if we couldn't find the file
+			continue
 		}
 
 		// If the input file was empty, move on
