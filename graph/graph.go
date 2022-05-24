@@ -20,32 +20,41 @@ type PackageInfo struct {
 	Versions map[string]VersionInfo `json:"versions"`
 }
 
-// Type structure for nodes. Name and Version can be removed if we find we don't use them often enough
-type nodeInfo struct {
+// NodeInfo is a type structure for nodes. Name and Version can be removed if we find we don't use them often enough
+type NodeInfo struct {
 	id        string
 	Name      string
 	Version   string
 	Timestamp string
 }
 
-// NodeInfo constructs a nodeInfo structure and automatically fills the id. This might not be the proper way to
-// do it in Go so feel free to change this to a more idiomatic version.
-func NodeInfo(name, version, timestamp string) *nodeInfo {
-	return &nodeInfo{
+// NewNodeInfo constructs a NodeInfo structure and automatically fills the id.
+func NewNodeInfo(name string, version string, timestamp string) *NodeInfo {
+	return &NodeInfo{
 		id:        fmt.Sprintf("%s-%s", name, version),
 		Name:      name,
 		Version:   version,
-		Timestamp: timestamp,
-	}
+		Timestamp: timestamp}
 }
 
-func CreateMap(in *[]PackageInfo) *map[int64]nodeInfo {
+////  This might not be the proper way to
+//// do it in Go so feel free to change this to a more idiomatic version.
+//func NodeInfo(name, version, timestamp string) *NodeInfo {
+//	return &NodeInfo{
+//		id:        fmt.Sprintf("%s-%s", name, version),
+//		Name:      name,
+//		Version:   version,
+//		Timestamp: timestamp,
+//	}
+//}
+
+func CreateMap(in *[]PackageInfo) *map[int64]NodeInfo {
 	var id int64 = 0
 	packagesInfo := *in
-	m := make(map[int64]nodeInfo, len(packagesInfo))
+	m := make(map[int64]NodeInfo, len(packagesInfo))
 	for _, packageInfo := range packagesInfo {
 		for packageVersion, versionInfo := range packageInfo.Versions {
-			m[id] = *NodeInfo(packageInfo.Name, packageVersion, versionInfo.Timestamp)
+			m[id] = *NewNodeInfo(packageInfo.Name, packageVersion, versionInfo.Timestamp)
 			id++
 		}
 	}
@@ -57,7 +66,7 @@ func AddElementToMap(x PackageInfo, inputMap *map[int64]PackageInfo) {
 	m[int64(len(m))] = x
 }
 
-func CreateNameToIDMap(m *map[int64]nodeInfo) *map[string]int64 {
+func CreateNameToIDMap(m *map[int64]NodeInfo) *map[string]int64 {
 	newMap := make(map[string]int64, len(*m))
 	for id, key := range *m {
 		newMap[key.id] = id
@@ -84,7 +93,7 @@ func CreateNameToVersionMap(m *[]PackageInfo) *map[string][]string {
 //	return n
 //}
 
-func CreateGraph(inputMap *map[int64]nodeInfo) *simple.DirectedGraph {
+func CreateGraph(inputMap *map[int64]NodeInfo) *simple.DirectedGraph {
 	m := *inputMap
 	graph := simple.NewDirectedGraph()
 	for x := range m {
