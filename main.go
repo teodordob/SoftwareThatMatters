@@ -31,9 +31,9 @@ func main() {
 	//fmt.Println(g2)
 	g.CreateEdges(g2, parsed, nameToIdMap, nameToVersionMap)
 
-	// Uncomment this to create the visualization and use these commands in the dot file
-	// Toggle Preview - ctrl+shift+v (Mac: cmd+shift+v)
-	// Open Preview to the Side - ctrl+k v (Mac: cmd+k shift+v)
+	//Uncomment this to create the visualization and use these commands in the dot file
+	//Toggle Preview - ctrl+shift+v (Mac: cmd+shift+v)
+	//Open Preview to the Side - ctrl+k v (Mac: cmd+k shift+v)
 	//g.Visualization(g2, "Test")
 
 	fmt.Println(m2)
