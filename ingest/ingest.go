@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	jsoniter "github.com/json-iterator/go"
 )
 
 type OutputVersion struct {
@@ -115,7 +117,7 @@ func StreamParse(inPath string, jsonOutPathTemplate string) int {
 	if _, err := dec.Token(); err != nil {
 		log.Fatal(err)
 	}
-	// While the decoder says there is more to parse, parse a JSON entries and print them one-by-one
+	// While the decoder says there is more to parse, parse JSON entries and print them one-by-one
 	i := 0
 	for dec.More() {
 		var e Entry
@@ -173,7 +175,7 @@ func writeToFileJSON(vdAddr *[]VersionDependencies, outPath string) {
 	}
 	defer outFile.Close()
 
-	enc := json.NewEncoder(outFile)
+	enc := jsoniter.NewEncoder(outFile)
 	// Only when vds is non-empty
 	if len(vds) > 0 {
 		name := vds[0].Name
@@ -246,6 +248,6 @@ func MergeJSON(inPathTemplate string, amount int) {
 		}
 	}
 
-	outFile.WriteString("]\n")
+	outFile.WriteString("\n]")
 	fmt.Println("Merged JSON files")
 }
