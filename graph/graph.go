@@ -22,84 +22,49 @@ type PackageInfo struct {
 
 // NodeInfo is a type structure for nodes. Name and Version can be removed if we find we don't use them often enough
 type NodeInfo struct {
-	id        string
+	id        int64
+	stringID  string
 	Name      string
 	Version   string
 	Timestamp string
 }
 
-// NewNodeInfo constructs a NodeInfo structure and automatically fills the id.
-func NewNodeInfo(name string, version string, timestamp string) *NodeInfo {
+// NewNodeInfo constructs a NodeInfo structure and automatically fills the stringID.
+func NewNodeInfo(id int64, name string, version string, timestamp string) *NodeInfo {
 	return &NodeInfo{
-		id:        fmt.Sprintf("%s-%s", name, version),
+		id:        id,
+		stringID:  fmt.Sprintf("%s-%s", name, version),
 		Name:      name,
 		Version:   version,
 		Timestamp: timestamp}
 }
 
-////  This might not be the proper way to
-//// do it in Go so feel free to change this to a more idiomatic version.
-//func NodeInfo(name, version, timestamp string) *NodeInfo {
-//	return &NodeInfo{
-//		id:        fmt.Sprintf("%s-%s", name, version),
-//		Name:      name,
-//		Version:   version,
-//		Timestamp: timestamp,
-//	}
-//}
-
-func CreateMap(in *[]PackageInfo) *map[int64]NodeInfo {
-	var id int64 = 0
-	packagesInfo := *in
-	m := make(map[int64]NodeInfo, len(packagesInfo))
-	for _, packageInfo := range packagesInfo {
+// CreateStringIDToNodeInfoMap takes a list of PackageInfo and a simple.DirectedGraph. For each of the packages,
+// it creates a mapping of stringIDs to NodeInfo and also adds a node to the graph. The handling of the IDs is delegated
+// to Gonum. These IDs are also included in the mapping for ease of access.
+func CreateStringIDToNodeInfoMap(packagesInfo *[]PackageInfo, graph *simple.DirectedGraph) *map[string]NodeInfo {
+	stringIDToNodeInfoMap := make(map[string]NodeInfo, len(*packagesInfo))
+	for _, packageInfo := range *packagesInfo {
 		for packageVersion, versionInfo := range packageInfo.Versions {
-			m[id] = *NewNodeInfo(packageInfo.Name, packageVersion, versionInfo.Timestamp)
-			id++
+			packageNameVersionString := fmt.Sprintf("%s-%s", packageInfo.Name, packageVersion)
+			// Delegate the work of creating a unique ID to Gonum
+			newNode := graph.NewNode()
+			stringIDToNodeInfoMap[packageNameVersionString] = *NewNodeInfo(newNode.ID(), packageInfo.Name, packageVersion, versionInfo.Timestamp)
+			graph.AddNode(newNode)
 		}
 	}
-	return &m
-}
-
-func AddElementToMap(x PackageInfo, inputMap *map[int64]PackageInfo) {
-	m := *inputMap
-	m[int64(len(m))] = x
-}
-
-func CreateNameToIDMap(m *map[int64]NodeInfo) *map[string]int64 {
-	newMap := make(map[string]int64, len(*m))
-	for id, key := range *m {
-		newMap[key.id] = id
-	}
-	return &newMap
+	return &stringIDToNodeInfoMap
 }
 
 func CreateNameToVersionMap(m *[]PackageInfo) *map[string][]string {
 	newMap := make(map[string][]string, len(*m))
 	for _, value := range *m {
 		name := value.Name
-		for k, _ := range value.Versions {
+		for k := range value.Versions {
 			newMap[name] = append(newMap[name], k)
 		}
 	}
 	return &newMap
-}
-
-//func CreateHelperMap(m map[int64]PackageInfo) map[string]int64 {
-//	n := make(map[string]int64)
-//	for x, y := range m {
-//
-//	}
-//	return n
-//}
-
-func CreateGraph(inputMap *map[int64]NodeInfo) *simple.DirectedGraph {
-	m := *inputMap
-	graph := simple.NewDirectedGraph()
-	for x := range m {
-		graph.AddNode(simple.Node(x))
-	}
-	return graph
 }
 
 //Function to write the simple graph to a dot file so it could be visualized with GraphViz
@@ -118,11 +83,12 @@ func Visualization(graph *simple.DirectedGraph, name string) {
 
 }
 
-// CreateEdges takes a graph, a list of packages and their dependencies and a map of package names to package IDs
-// and creates directed edges between the dependent library and its dependencies.
-func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, nameToIDMap *map[string]int64, nameToVersionMap *map[string][]string) {
-	packagesInfo := *inputList
-	nameToID := *nameToIDMap
+// CreateEdges takes a graph, a list of packages and their dependencies, a map of stringIDs to NodeInfo and
+// a map of names to versions and creates directed edges between the dependent library and its dependencies.
+// TODO: add documentation on how we use semver for edges
+// TODO: Discuss removing pointers from maps since they are reference types without the need of using * : https://stackoverflow.com/questions/40680981/are-maps-passed-by-value-or-by-reference-in-go
+func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, stringIDToNodeInfo *map[string]NodeInfo, nameToVersionMap *map[string][]string) {
+	packagesInfo := *inputList // Dereferencing here results in copying the whole list. Maybe we can just use the dereferencing without the assigning as to avoid copying things
 	nameToVersion := *nameToVersionMap
 	for id, packageInfo := range packagesInfo {
 		for _, dependencyInfo := range packageInfo.Versions {
@@ -135,7 +101,7 @@ func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, nameToID
 					newVersion, _ := semver2.Parse(v)
 					if c(newVersion) {
 						dependencyNameVersionString := fmt.Sprintf("%s-%s", dependencyName, v)
-						dependencyNode := graph.Node(nameToID[dependencyNameVersionString])
+						dependencyNode := graph.Node((*stringIDToNodeInfo)[dependencyNameVersionString].id)
 						packageNode := graph.Node(int64(id))
 						graph.SetEdge(simple.Edge{F: packageNode, T: dependencyNode})
 					}
