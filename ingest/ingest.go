@@ -176,8 +176,6 @@ func StreamParse(inPath string, jsonOutPathTemplate string) int {
 func writeToFileJSON(vdAddr *[]VersionDependencies, outPath string) {
 	outFile, err := os.OpenFile(outPath, os.O_CREATE|os.O_WRONLY, 0644)
 
-	vds := *vdAddr
-
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -185,11 +183,11 @@ func writeToFileJSON(vdAddr *[]VersionDependencies, outPath string) {
 
 	enc := jsoniter.NewEncoder(outFile)
 	// Only when vds is non-empty
-	if len(vds) > 0 {
-		name := vds[0].Name
-		versionMap := make(map[string]OutputVersion, len(vds))
+	if len(*vdAddr) > 0 {
+		name := (*vdAddr)[0].Name
+		versionMap := make(map[string]OutputVersion, len(*vdAddr))
 
-		for _, vd := range vds {
+		for _, vd := range *vdAddr {
 			number := vd.Version
 			timestamp := vd.VersionCreated
 			deps := vd.Dependencies
