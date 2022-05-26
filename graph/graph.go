@@ -3,12 +3,12 @@ package graph
 import (
 	"encoding/json"
 	"fmt"
+	"log"
+	"os"
+
 	semver2 "github.com/blang/semver/v4"
 	"gonum.org/v1/gonum/graph/encoding/dot"
 	"gonum.org/v1/gonum/graph/simple"
-	"log"
-	"os"
-	"regexp"
 )
 
 type VersionInfo struct {
@@ -68,8 +68,7 @@ func CreateNameToVersionMap(m *[]PackageInfo) *map[string][]string {
 	return &newMap
 }
 
-//Function to write the simple graph to a dot file so it could be visualized with GraphViz
-//TODO Find out how to add the labels to the nodes
+//Function to write the simple graph to a dot file so it could be visualized with GraphViz. This includes only Ids
 func Visualization(graph *simple.DirectedGraph, name string) {
 	result, _ := dot.Marshal(graph, name, "", "  ")
 
@@ -81,6 +80,37 @@ func Visualization(graph *simple.DirectedGraph, name string) {
 	defer file.Close()
 
 	fmt.Fprintf(file, string(result))
+
+}
+
+//Writes to dot file manually from the NodeInfoMap to include the Node info in the graphViz
+//TODO: Optimize in the future since this is kind of barbaric probably there is a faster way.
+func VisualizationNodeInfo(iDToNodeInfo *map[string]NodeInfo, graph *simple.DirectedGraph, name string) {
+	file, err := os.Create(name + ".dot")
+	d1 := []byte("strict digraph" + " " + name + " " + "{\n")
+	d2 := []byte("}")
+	lab := string("[label = \" ")
+	edgIt := graph.Edges()
+
+	fmt.Fprintf(file, string(d1))
+
+	for key, element := range *iDToNodeInfo {
+		//fmt.Println("Key:", key, "=>", "Element:", element.id)
+		fmt.Fprintf(file, fmt.Sprint(element.id)+lab+string(key)+` \n `+string(element.Version)+` \n `+string(element.Timestamp)+"\""+"];\n")
+
+	}
+
+	for edgIt.Next() {
+		fmt.Fprintf(file, fmt.Sprint(edgIt.Edge().From().ID())+" -> "+fmt.Sprint(edgIt.Edge().To().ID())+";\n")
+	}
+
+	fmt.Fprintf(file, string(d2))
+
+	if err != nil {
+		panic(err)
+	}
+
+	defer file.Close()
 
 }
 

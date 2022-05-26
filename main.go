@@ -1,7 +1,8 @@
 package main
 
 import (
-	"fmt"
+	//"fmt"
+
 	"gonum.org/v1/gonum/graph/simple"
 
 	g "github.com/AJMBrands/SoftwareThatMatters/graph"
@@ -29,18 +30,21 @@ func main() {
 	stringIDToNodeInfo := g.CreateStringIDToNodeInfoMap(parsed, graph)
 	nameToVersions := g.CreateNameToVersionMap(parsed)
 	g.CreateEdges(graph, parsed, stringIDToNodeInfo, nameToVersions)
-	//g.Visualization(graph, "graph")
-	fmt.Println(stringIDToNodeInfo)
+	//g.Visualization(graph, "graph2")
+	//fmt.Println(stringIDToNodeInfo)
+
+	//Uncomment this to create the visualization and use these commands in the dot file
+	//Toggle Preview - ctrl+shift+v (Mac: cmd+shift+v)
+	//Open Preview to the Side - ctrl+k v (Mac: cmd+k shift+v)
+	// g.Visualization(graph, "OnlyIds")
+	// g.VisualizationNodeInfo(stringIDToNodeInfo, graph, "IDInfo")
+
+	//fmt.Println(nameToVersions)
 	//nameToIdMap := g.CreateNameToIDMap(m2)
 	//nameToVersionMap := g.CreateNameToVersionMap(parsed)
 	//g2 := g.CreateGraph(m2)
 	////fmt.Println(g2)
 	//g.CreateEdges(g2, parsed, nameToIdMap, nameToVersionMap)
-	//
-	////Uncomment this to create the visualization and use these commands in the dot file
-	////Toggle Preview - ctrl+shift+v (Mac: cmd+shift+v)
-	////Open Preview to the Side - ctrl+k v (Mac: cmd+k shift+v)
-	////g.Visualization(g2, "Test")
 	//
 	//fmt.Println(m2)
 	//fmt.Println(nameToIdMap)
