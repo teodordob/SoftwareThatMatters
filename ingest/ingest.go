@@ -20,6 +20,7 @@ type OutputVersion struct {
 type OutputFormat struct {
 	Name     string                   `json:"name"`
 	Versions map[string]OutputVersion `json:"versions"`
+	Bin      interface{}              `json:"bin"`
 }
 
 type VersionData struct {
@@ -32,6 +33,7 @@ type Doc struct {
 	Name     string                 `json:"name"`
 	Versions map[string]VersionData `json:"versions"`
 	Time     map[string]CreatedTime `json:"time"`
+	Bin      interface{}            `json:"bin"`
 }
 
 type Entry struct {
@@ -131,7 +133,7 @@ func StreamParse(inPath string, jsonOutPathTemplate string) int {
 			continue // Just move on and skip this entry
 		}
 		timeStamps := e.Doc.Time
-
+		bin := e.Doc.Bin
 		var vds []VersionDependencies = make([]VersionDependencies, 0, len(e.Doc.Versions))
 
 		for number, vd := range e.Doc.Versions {
@@ -151,11 +153,11 @@ func StreamParse(inPath string, jsonOutPathTemplate string) int {
 		jsonPath := fmt.Sprintf(jsonOutPathTemplate, fmt.Sprint(i)) // Append a number to filePath
 		wg.Add(1)                                                   // The waitGroup needs to wait for one more
 		guard <- 0                                                  // Add one thread to the amount of running threads
-		go func(vds *[]VersionDependencies, jsonPath string) {
+		go func(vds *[]VersionDependencies, bin interface{}, jsonPath string) {
 			defer wg.Done() // Tell the WaitGroup this task is done after the function below is done
-			writeToFileJSON(vds, jsonPath)
+			writeToFileJSON(vds, bin, jsonPath)
 			<-guard // One thread was freed, now another can start
-		}(&vds, jsonPath)
+		}(&vds, bin, jsonPath)
 
 		i++
 	}
@@ -173,7 +175,7 @@ func StreamParse(inPath string, jsonOutPathTemplate string) int {
 	return i
 }
 
-func writeToFileJSON(vdAddr *[]VersionDependencies, outPath string) {
+func writeToFileJSON(vdAddr *[]VersionDependencies, bin interface{}, outPath string) {
 	outFile, err := os.OpenFile(outPath, os.O_CREATE|os.O_WRONLY, 0644)
 
 	if err != nil {
@@ -202,7 +204,7 @@ func writeToFileJSON(vdAddr *[]VersionDependencies, outPath string) {
 			versionMap[number] = outVersion
 		}
 
-		out := OutputFormat{name, versionMap}
+		out := OutputFormat{name, versionMap, bin}
 
 		// Error handling for encoding
 		if err := enc.Encode(out); err != nil {
