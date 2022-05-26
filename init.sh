@@ -12,7 +12,7 @@ URL="https://replicate.npmjs.com/_all_docs?include_docs=true"
 else # If N was positive and specified, download that many records
 URL="https://replicate.npmjs.com/_all_docs?include_docs=true&limit=${N}"
 fi
-# The following script downloads the npm data dump and then projects so that we only have the rows entries
+# The following script downloads the npm data dump
 echo "Starting download..."
 wget -O "$OUTFILE" "$URL" && echo "Done!"
 
