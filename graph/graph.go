@@ -8,6 +8,7 @@ import (
 	"gonum.org/v1/gonum/graph/simple"
 	"log"
 	"os"
+	"regexp"
 )
 
 type VersionInfo struct {
@@ -93,6 +94,8 @@ func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, stringID
 	for id, packageInfo := range packagesInfo {
 		for _, dependencyInfo := range packageInfo.Versions {
 			for dependencyName, dependencyVersion := range dependencyInfo.Dependencies {
+				mvndep := translateMavenSemver(dependencyVersion)
+				fmt.Println(mvndep)
 				c, err := semver2.ParseRange(dependencyVersion)
 				if err != nil {
 					panic(err)
@@ -109,6 +112,22 @@ func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, stringID
 			}
 		}
 	}
+}
+
+func translateMavenSemver(s string) string {
+	//r, _ := regexp.Compile("((?P<deschis>[\\(\\[])(((0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?,((0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?)|(,?(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?))[\\)\\]])|(?P<singur>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)")
+	r, _ := regexp.Compile("(([\\(\\[])(((0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?,((0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?)|(,?(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?))[\\)\\]])|((0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)")
+	match := r.FindStringSubmatch(s)
+	//result := make(map[string]string)
+	//for i, name := range r.SubexpNames() {
+	//	if i != 0 && name != "" {
+	//		result[name] = match[2]
+	//	}
+	//	fmt.Printf("by name: %s %s\n", result["singur"])
+	//}
+	//
+	//return result["deschis"]
+	return match[2]
 }
 
 func ParseJSON(inPath string) *[]PackageInfo {
