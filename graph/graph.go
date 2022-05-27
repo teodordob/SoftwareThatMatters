@@ -3,12 +3,11 @@ package graph
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/Masterminds/semver"
 	"log"
 	"os"
 	"regexp"
 
-	semver2 "github.com/blang/semver/v4"
+	"github.com/Masterminds/semver"
 	"gonum.org/v1/gonum/graph/encoding/dot"
 	"gonum.org/v1/gonum/graph/simple"
 )
