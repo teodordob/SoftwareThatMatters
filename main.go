@@ -25,7 +25,7 @@ func main() {
 	//g1 := g.CreateGraph(m)
 	//fmt.Println(g1)
 
-	parsed := g.ParseJSON("data/input/test_data.json")
+	parsed := g.ParseJSON("data/out/packages.json")
 	graph := simple.NewDirectedGraph()
 	stringIDToNodeInfo := g.CreateStringIDToNodeInfoMap(parsed, graph)
 	nameToVersions := g.CreateNameToVersionMap(parsed)
@@ -36,8 +36,8 @@ func main() {
 	//Uncomment this to create the visualization and use these commands in the dot file
 	//Toggle Preview - ctrl+shift+v (Mac: cmd+shift+v)
 	//Open Preview to the Side - ctrl+k v (Mac: cmd+k shift+v)
-	// g.Visualization(graph, "OnlyIds")
-	// g.VisualizationNodeInfo(stringIDToNodeInfo, graph, "IDInfo")
+	g.Visualization(graph, "OnlyIds")
+	g.VisualizationNodeInfo(stringIDToNodeInfo, graph, "IDInfo")
 
 	//fmt.Println(nameToVersions)
 	//nameToIdMap := g.CreateNameToIDMap(m2)
