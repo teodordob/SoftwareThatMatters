@@ -121,23 +121,28 @@ func VisualizationNodeInfo(iDToNodeInfo *map[string]NodeInfo, graph *simple.Dire
 // TODO: add documentation on how we use semver for edges
 // TODO: Discuss removing pointers from maps since they are reference types without the need of using * : https://stackoverflow.com/questions/40680981/are-maps-passed-by-value-or-by-reference-in-go
 func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, stringIDToNodeInfo *map[string]NodeInfo, nameToVersionMap *map[string][]string) {
-	packagesInfo := *inputList // Dereferencing here results in copying the whole list. Maybe we can just use the dereferencing without the assigning as to avoid copying things
-	nameToVersion := *nameToVersionMap
-	for id, packageInfo := range packagesInfo {
+	for id, packageInfo := range *inputList {
 		for _, dependencyInfo := range packageInfo.Versions {
 			for dependencyName, dependencyVersion := range dependencyInfo.Dependencies {
 				c, err := semver.NewConstraint(dependencyVersion)
 				parsedCorrectly := true
 				if err != nil {
-					if strings.Contains(err.Error(), "improper") {
-						parsedCorrectly = false
+					parsedCorrectly = false
+					// Either the semver parser said this is an improper constraint or this constraint just has *, x, or ^ in weird places
+					if strings.HasPrefix(dependencyVersion, "*") && len(dependencyVersion) > 1 {
+						// Dependencies starting with a star don't make sense, so chop them off
+						dependencyVersion = dependencyVersion[1:]
 					} else {
-						log.Println("Something else went wrong:", err)
+						log.Println(err, "with the following constraint:", dependencyVersion)
 					}
 				}
-				for _, v := range nameToVersion[dependencyName] {
+				for _, v := range (*nameToVersionMap)[dependencyName] {
 					if parsedCorrectly {
-						newVersion, _ := semver.NewVersion(v)
+						newVersion, err := semver.NewVersion(v)
+						if err != nil {
+							log.Println("Something went wrong parsing the version: ", err)
+							continue
+						}
 						constrBool := c.Check(newVersion)
 						if constrBool {
 							insertEdge(dependencyName, v, graph, stringIDToNodeInfo, id)
