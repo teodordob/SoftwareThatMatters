@@ -121,11 +121,11 @@ func VisualizationNodeInfo(iDToNodeInfo *map[string]NodeInfo, graph *simple.Dire
 func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, stringIDToNodeInfo *map[string]NodeInfo, nameToVersionMap *map[string][]string) {
 	packagesInfo := *inputList // Dereferencing here results in copying the whole list. Maybe we can just use the dereferencing without the assigning as to avoid copying things
 	nameToVersion := *nameToVersionMap
-	r, _ := regexp.Compile("((?P<open>[\\(\\[])(?P<bothVer>((?P<firstVer>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)(?P<comma>,)(?P<secondVer>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?)|((?P<comma2>,)?(?P<secondVer2>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+)))?)?))(?P<closing>[\\)\\]]))|(?P<simplvers>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)")
+	r, _ := regexp.Compile("((?P<open>[\\(\\[])(?P<bothVer>((?P<firstVer>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)(?P<comma1>,)(?P<secondVer1>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?)|((?P<comma2>,)?(?P<secondVer2>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?))(?P<close>[\\)\\]]))|(?P<simplevers>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)")
 	for id, packageInfo := range packagesInfo {
 		for _, dependencyInfo := range packageInfo.Versions {
 			for dependencyName, dependencyVersion := range dependencyInfo.Dependencies {
-				mvndep := translateMavenSemver(dependencyVersion, r)
+				mvndep := parseMultipleMavenSemVers(dependencyVersion, r)
 				fmt.Println(mvndep)
 				constraint, err := semver.NewConstraint(dependencyVersion)
 				//c, err := semver2.ParseRange(dependencyVersion)
@@ -147,17 +147,78 @@ func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, stringID
 	}
 }
 
+func parseMultipleMavenSemVers(s string, reg *regexp.Regexp) string {
+	var finalResult string
+	chars := []rune(s)
+	openIndex := 0
+	closeIndex := 0
+	for i := 0; i < len(chars); i++ {
+		char := string(chars[i])
+		if char == "(" || char == "[" {
+			openIndex = i
+		}
+		if char == ")" || char == "]" {
+			closeIndex = i
+			if i != len(chars)-1 {
+				finalResult += translateMavenSemver(s[openIndex:closeIndex+1], reg) + " || "
+			} else {
+				finalResult += translateMavenSemver(s[openIndex:closeIndex+1], reg)
+			}
+		}
+
+	}
+	return finalResult
+}
+
 func translateMavenSemver(s string, reg *regexp.Regexp) string {
 	match := reg.FindStringSubmatch(s)
 	result := make(map[string]string)
+	var finalResult string
 	for i, name := range reg.SubexpNames() {
 		if i != 0 && name != "" {
 			result[name] = match[i]
 		}
 		fmt.Printf("by name: %s %s\n", result["singur"])
 	}
-
-	return result["primavers"]
+	if len(result["close"]) > 0 {
+		if len(result["secondVer2"]) > 0 {
+			if len(result["comma1"]) > 0 || len(result["comma2"]) > 0 {
+				switch result["close"] {
+				case "]":
+					finalResult = "<= " + result["secondVer2"]
+				case ")":
+					finalResult = "< " + result["secondVer2"]
+				}
+			} else {
+				finalResult = "= " + result["secondVer2"]
+			}
+		} else {
+			if len(result["firstVer"]) > 0 && len(result["secondVer1"]) > 0 {
+				switch result["open"] {
+				case "[":
+					finalResult = ">= " + result["firstVer"] + ", "
+				case "(":
+					finalResult = "> " + result["firstVer"] + ", "
+				}
+				switch result["close"] {
+				case "]":
+					finalResult += "<= " + result["secondVer1"]
+				case ")":
+					finalResult += "< " + result["secondVer1"]
+				}
+			} else if len(result["firstVer"]) > 0 && len(result["secondVer1"]) == 0 {
+				switch result["open"] {
+				case "[":
+					finalResult = ">= " + result["firstVer"]
+				case "(":
+					finalResult = "> " + result["firstVer"]
+				}
+			}
+		}
+	} else {
+		finalResult = ">= " + result["simplevers"]
+	}
+	return finalResult
 
 }
 
