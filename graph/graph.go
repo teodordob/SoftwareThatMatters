@@ -3,6 +3,7 @@ package graph
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/Masterminds/semver"
 	"log"
 	"os"
 
@@ -124,15 +125,14 @@ func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, stringID
 	for id, packageInfo := range packagesInfo {
 		for _, dependencyInfo := range packageInfo.Versions {
 			for dependencyName, dependencyVersion := range dependencyInfo.Dependencies {
-				mvndep := translateMavenSemver(dependencyVersion)
-				fmt.Println(mvndep)
-				c, err := semver2.ParseRange(dependencyVersion)
+				c, err := semver.NewConstraint(dependencyVersion)
 				if err != nil {
-					panic(err)
+					fmt.Println("NU MERGE PARSEUL DE SEMVER MANCATZAS")
 				}
 				for _, v := range nameToVersion[dependencyName] {
-					newVersion, _ := semver2.Parse(v)
-					if c(newVersion) {
+					newVersion, _ := semver.NewVersion(v)
+					constrBool := c.Check(newVersion)
+					if constrBool {
 						dependencyNameVersionString := fmt.Sprintf("%s-%s", dependencyName, v)
 						dependencyNode := graph.Node((*stringIDToNodeInfo)[dependencyNameVersionString].id)
 						packageNode := graph.Node(int64(id))
