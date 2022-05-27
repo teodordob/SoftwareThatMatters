@@ -127,7 +127,7 @@ func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, stringID
 			for dependencyName, dependencyVersion := range dependencyInfo.Dependencies {
 				c, err := semver.NewConstraint(dependencyVersion)
 				if err != nil {
-					fmt.Println("NU MERGE PARSEUL DE SEMVER MANCATZAS")
+					fmt.Println("Something went wrong:", err)
 				}
 				for _, v := range nameToVersion[dependencyName] {
 					newVersion, _ := semver.NewVersion(v)
