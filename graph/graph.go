@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"strings"
 
 	"github.com/Masterminds/semver"
 	"gonum.org/v1/gonum/graph/encoding/dot"
@@ -126,22 +127,36 @@ func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, stringID
 		for _, dependencyInfo := range packageInfo.Versions {
 			for dependencyName, dependencyVersion := range dependencyInfo.Dependencies {
 				c, err := semver.NewConstraint(dependencyVersion)
+				parsedCorrectly := true
 				if err != nil {
-					fmt.Println("Something went wrong:", err)
-				}
-				for _, v := range nameToVersion[dependencyName] {
-					newVersion, _ := semver.NewVersion(v)
-					constrBool := c.Check(newVersion)
-					if constrBool {
-						dependencyNameVersionString := fmt.Sprintf("%s-%s", dependencyName, v)
-						dependencyNode := graph.Node((*stringIDToNodeInfo)[dependencyNameVersionString].id)
-						packageNode := graph.Node(int64(id))
-						graph.SetEdge(simple.Edge{F: packageNode, T: dependencyNode})
+					if strings.Contains(err.Error(), "improper") {
+						parsedCorrectly = false
+					} else {
+						log.Println("Something else went wrong:", err)
 					}
 				}
+				for _, v := range nameToVersion[dependencyName] {
+					if parsedCorrectly {
+						newVersion, _ := semver.NewVersion(v)
+						constrBool := c.Check(newVersion)
+						if constrBool {
+							insertEdge(dependencyName, v, graph, stringIDToNodeInfo, id)
+						}
+					} else if dependencyVersion == v { // If the semver parser doesn't know what to do, just do an exact match on the version
+						insertEdge(dependencyName, v, graph, stringIDToNodeInfo, id)
+					}
+				}
+
 			}
 		}
 	}
+}
+
+func insertEdge(dependencyName, version string, graph *simple.DirectedGraph, stringIDToNodeInfo *map[string]NodeInfo, id int) {
+	dependencyNameVersionString := fmt.Sprintf("%s-%s", dependencyName, version)
+	dependencyNode := graph.Node((*stringIDToNodeInfo)[dependencyNameVersionString].id)
+	packageNode := graph.Node(int64(id))
+	graph.SetEdge(simple.Edge{F: packageNode, T: dependencyNode})
 }
 
 func translateMavenSemver(s string) string {
