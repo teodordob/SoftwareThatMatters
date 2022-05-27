@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"regexp"
 
 	semver2 "github.com/blang/semver/v4"
 	"gonum.org/v1/gonum/graph/encoding/dot"
