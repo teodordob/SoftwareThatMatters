@@ -14,5 +14,5 @@ URL="https://replicate.npmjs.com/_all_docs?include_docs=true&limit=${N}"
 fi
 # The following script downloads the npm data dump
 echo "Starting download..."
-wget -O "$OUTFILE" "$URL" && echo "Done!"
+wget --compression=auto -O "$OUTFILE" "$URL" && echo "Done!"
 
