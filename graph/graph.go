@@ -57,6 +57,14 @@ func CreateStringIDToNodeInfoMap(packagesInfo *[]PackageInfo, graph *simple.Dire
 	return &stringIDToNodeInfoMap
 }
 
+func CreateNodeIdToPackageMap(m *map[string]NodeInfo) *map[int64]NodeInfo {
+	s := make(map[int64]NodeInfo, len(*m))
+	for _, val := range *m {
+		s[val.id] = val
+	}
+	return &s
+}
+
 func CreateNameToVersionMap(m *[]PackageInfo) *map[string][]string {
 	newMap := make(map[string][]string, len(*m))
 	for _, value := range *m {
@@ -118,16 +126,18 @@ func VisualizationNodeInfo(iDToNodeInfo *map[string]NodeInfo, graph *simple.Dire
 // a map of names to versions and creates directed edges between the dependent library and its dependencies.
 // TODO: add documentation on how we use semver for edges
 // TODO: Discuss removing pointers from maps since they are reference types without the need of using * : https://stackoverflow.com/questions/40680981/are-maps-passed-by-value-or-by-reference-in-go
-func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, stringIDToNodeInfo *map[string]NodeInfo, nameToVersionMap *map[string][]string) {
+func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, stringIDToNodeInfo *map[string]NodeInfo, nameToVersionMap *map[string][]string, isMaven bool) {
 	packagesInfo := *inputList // Dereferencing here results in copying the whole list. Maybe we can just use the dereferencing without the assigning as to avoid copying things
 	nameToVersion := *nameToVersionMap
 	r, _ := regexp.Compile("((?P<open>[\\(\\[])(?P<bothVer>((?P<firstVer>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)(?P<comma1>,)(?P<secondVer1>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?)|((?P<comma2>,)?(?P<secondVer2>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?))(?P<close>[\\)\\]]))|(?P<simplevers>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)")
 	for id, packageInfo := range packagesInfo {
 		for _, dependencyInfo := range packageInfo.Versions {
 			for dependencyName, dependencyVersion := range dependencyInfo.Dependencies {
-				mvndep := parseMultipleMavenSemVers(dependencyVersion, r)
-				fmt.Println(mvndep)
-				constraint, err := semver.NewConstraint(dependencyVersion)
+				finaldep := dependencyVersion
+				if isMaven {
+					finaldep = parseMultipleMavenSemVers(dependencyVersion, r)
+				}
+				constraint, err := semver.NewConstraint(finaldep)
 				//c, err := semver2.ParseRange(dependencyVersion)
 				if err != nil {
 					log.Fatal(err)
@@ -167,6 +177,10 @@ func parseMultipleMavenSemVers(s string, reg *regexp.Regexp) string {
 		}
 
 	}
+	if closeIndex == 0 && openIndex == 0 {
+		return translateMavenSemver(s, reg)
+	}
+
 	return finalResult
 }
 
