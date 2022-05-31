@@ -6,6 +6,7 @@ import (
 	"fmt"
 	g "github.com/AJMBrands/SoftwareThatMatters/graph"
 	"gonum.org/v1/gonum/graph"
+	"gonum.org/v1/gonum/graph/network"
 	"gonum.org/v1/gonum/graph/simple"
 	"gonum.org/v1/gonum/graph/traverse"
 )
@@ -42,12 +43,10 @@ func main() {
 		},
 	}
 	x := w.Walk(graph1, graph1.Node(0), nil)
-	//fmt.Println(t)
-	//traverse.DepthFirst{
-	//    Visit:    nil,
-	//    Traverse: nil,
-	//}
+	pageranking := network.PageRank(graph1, 0.85, 0.00001)
+
 	fmt.Println(x)
+	fmt.Println(pageranking)
 	//Uncomment this to create the visualization and use these commands in the dot file
 	//Toggle Preview - ctrl+shift+v (Mac: cmd+shift+v)
 	//Open Preview to the Side - ctrl+k v (Mac: cmd+k shift+v)
