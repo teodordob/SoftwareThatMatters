@@ -46,13 +46,13 @@ func TestNodeCreationBasicGraph(t *testing.T) {
 
 	t.Run("Create the two unique, correct nodes", func(t *testing.T) {
 		var idA, idB int64
-		if a, check := stringMap["A-1.0.0"]; check {
+		if a, check := stringMap["A-1.0.0"]; check && graph.Node(idA) != nil {
 			idA = a.id
 		} else {
 			t.Error("Node A-1.0.0 didn't exist")
 		}
 
-		if b, check := stringMap["B-1.0.0"]; check {
+		if b, check := stringMap["B-1.0.0"]; check && graph.Node(idB) != nil {
 			idB = b.id
 		} else {
 			t.Error("Node B-1.0.0 didn't exist")
