@@ -3,12 +3,13 @@ package graph
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/Masterminds/semver"
-	"gonum.org/v1/gonum/graph/encoding/dot"
-	"gonum.org/v1/gonum/graph/simple"
 	"log"
 	"os"
 	"regexp"
+
+	"github.com/Masterminds/semver"
+	"gonum.org/v1/gonum/graph/encoding/dot"
+	"gonum.org/v1/gonum/graph/simple"
 )
 
 type VersionInfo struct {
@@ -89,7 +90,7 @@ func Visualization(graph *simple.DirectedGraph, name string) {
 	}
 	defer file.Close()
 
-	fmt.Fprintf(file, string(result))
+	fmt.Fprint(file, string(result))
 
 }
 
@@ -102,7 +103,7 @@ func VisualizationNodeInfo(iDToNodeInfo *map[string]NodeInfo, graph *simple.Dire
 	lab := string("[label = \" ")
 	edgIt := graph.Edges()
 
-	fmt.Fprintf(file, string(d1))
+	fmt.Fprint(file, string(d1))
 
 	for key, element := range *iDToNodeInfo {
 		//fmt.Println("Key:", key, "=>", "Element:", element.id)
@@ -114,7 +115,7 @@ func VisualizationNodeInfo(iDToNodeInfo *map[string]NodeInfo, graph *simple.Dire
 		fmt.Fprintf(file, fmt.Sprint(edgIt.Edge().From().ID())+" -> "+fmt.Sprint(edgIt.Edge().To().ID())+";\n")
 	}
 
-	fmt.Fprintf(file, string(d2))
+	fmt.Fprint(file, string(d2))
 
 	if err != nil {
 		panic(err)
@@ -194,7 +195,7 @@ func translateMavenSemver(s string, reg *regexp.Regexp) string {
 			result[name] = match[i]
 		}
 		//TODO: What is happening here?
-		fmt.Printf("by name: %s %s\n", result["singur"])
+		//fmt.Printf("by name: %s %s\n", result["singur"])
 	}
 	if len(result["close"]) > 0 {
 		if len(result["secondVer2"]) > 0 {

@@ -33,9 +33,9 @@ func TestNodeCreationBasicGraph(t *testing.T) {
 	}
 
 	graph := simple.NewDirectedGraph()
-	stringMap := *CreateStringIDToNodeInfoMap(&simplePackageInfo, graph)
-	nameVersion := *CreateNameToVersionMap(&simplePackageInfo)
-	CreateEdges(graph, &simplePackageInfo, &stringMap, &nameVersion, false)
+	stringMap := CreateStringIDToNodeInfoMap(&simplePackageInfo, graph)
+	nameVersion := CreateNameToVersionMap(&simplePackageInfo)
+	CreateEdges(graph, &simplePackageInfo, stringMap, nameVersion, false)
 
 	t.Run("Create two nodes because we specified two packages", func(t *testing.T) {
 
@@ -129,9 +129,9 @@ func TestNodeCreationMediumComplexity(t *testing.T) {
 	}
 
 	graph := simple.NewDirectedGraph()
-	stringNodeInfo := *CreateStringIDToNodeInfoMap(&mediumPackageInfo, graph)
-	nameVersion := *CreateNameToVersionMap(&mediumPackageInfo)
-	CreateEdges(graph, &mediumPackageInfo, &stringNodeInfo, &nameVersion, false)
+	stringNodeInfo := CreateStringIDToNodeInfoMap(&mediumPackageInfo, graph)
+	nameVersion := CreateNameToVersionMap(&mediumPackageInfo)
+	CreateEdges(graph, &mediumPackageInfo, stringNodeInfo, nameVersion, false)
 
 	t.Run("Creates 8 nodes, one for every package version", func(t *testing.T) {
 
@@ -220,9 +220,9 @@ func TestCreateEdgesBasicGraph(t *testing.T) {
 	}
 
 	graph := simple.NewDirectedGraph()
-	stringIDToNodeInfo := *CreateStringIDToNodeInfoMap(&simplePackagesInfo, graph)
-	nameToVersions := *CreateNameToVersionMap(&simplePackagesInfo)
-	CreateEdges(graph, &simplePackagesInfo, &stringIDToNodeInfo, &nameToVersions, false)
+	stringIDToNodeInfo := CreateStringIDToNodeInfoMap(&simplePackagesInfo, graph)
+	nameToVersions := CreateNameToVersionMap(&simplePackagesInfo)
+	CreateEdges(graph, &simplePackagesInfo, stringIDToNodeInfo, nameToVersions, false)
 
 	t.Run("Creates one edge when there is one dependency", func(t *testing.T) {
 
@@ -293,9 +293,9 @@ func TestCreateEdgesMediumComplexityGraph(t *testing.T) {
 	}
 
 	graph := simple.NewDirectedGraph()
-	stringIDToNodeInfo := *CreateStringIDToNodeInfoMap(&packagesInfo, graph)
-	nameToVersions := *CreateNameToVersionMap(&packagesInfo)
-	CreateEdges(graph, &packagesInfo, &stringIDToNodeInfo, &nameToVersions, false)
+	stringIDToNodeInfo := CreateStringIDToNodeInfoMap(&packagesInfo, graph)
+	nameToVersions := CreateNameToVersionMap(&packagesInfo)
+	CreateEdges(graph, &packagesInfo, stringIDToNodeInfo, nameToVersions, false)
 	t.Run("Creates 6 edges when there are 6 possible dependencies", func(t *testing.T) {
 		if graph.Edges().Len() != 6 {
 			t.Errorf("Expected 6 edges, got %d", graph.Edges().Len())
