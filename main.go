@@ -1,10 +1,14 @@
 package main
 
 import (
-	"fmt"
-	"gonum.org/v1/gonum/graph/simple"
+	//"fmt"
 
+	"fmt"
 	g "github.com/AJMBrands/SoftwareThatMatters/graph"
+	"gonum.org/v1/gonum/graph"
+	"gonum.org/v1/gonum/graph/network"
+	"gonum.org/v1/gonum/graph/simple"
+	"gonum.org/v1/gonum/graph/traverse"
 )
 
 func main() {
@@ -25,22 +29,36 @@ func main() {
 	//fmt.Println(g1)
 
 	parsed := g.ParseJSON("data/input/test_data.json")
-	graph := simple.NewDirectedGraph()
-	stringIDToNodeInfo := g.CreateStringIDToNodeInfoMap(parsed, graph)
+	graph1 := simple.NewDirectedGraph()
+	stringIDToNodeInfo := g.CreateStringIDToNodeInfoMap(parsed, graph1)
 	nameToVersions := g.CreateNameToVersionMap(parsed)
-	g.CreateEdges(graph, parsed, stringIDToNodeInfo, nameToVersions)
-	//g.Visualization(graph, "graph")
-	fmt.Println(stringIDToNodeInfo)
+	idToPackageMap := g.CreateNodeIdToPackageMap(stringIDToNodeInfo)
+	g.CreateEdges(graph1, parsed, stringIDToNodeInfo, nameToVersions, true)
+	//g.Visualization(graph, "graph2")
+	//fmt.Println(stringIDToNodeInfo)
+	w := traverse.DepthFirst{
+		Visit: func(node graph.Node) {
+			x1 := *idToPackageMap
+			fmt.Println(x1[node.ID()])
+		},
+	}
+	x := w.Walk(graph1, graph1.Node(0), nil)
+	pageranking := network.PageRank(graph1, 0.85, 0.00001)
+
+	fmt.Println(x)
+	fmt.Println(pageranking)
+	//Uncomment this to create the visualization and use these commands in the dot file
+	//Toggle Preview - ctrl+shift+v (Mac: cmd+shift+v)
+	//Open Preview to the Side - ctrl+k v (Mac: cmd+k shift+v)
+	// g.Visualization(graph, "OnlyIds")
+	// g.VisualizationNodeInfo(stringIDToNodeInfo, graph, "IDInfo")
+
+	//fmt.Println(nameToVersions)
 	//nameToIdMap := g.CreateNameToIDMap(m2)
 	//nameToVersionMap := g.CreateNameToVersionMap(parsed)
 	//g2 := g.CreateGraph(m2)
 	////fmt.Println(g2)
 	//g.CreateEdges(g2, parsed, nameToIdMap, nameToVersionMap)
-	//
-	////Uncomment this to create the visualization and use these commands in the dot file
-	////Toggle Preview - ctrl+shift+v (Mac: cmd+shift+v)
-	////Open Preview to the Side - ctrl+k v (Mac: cmd+k shift+v)
-	////g.Visualization(g2, "Test")
 	//
 	//fmt.Println(m2)
 	//fmt.Println(nameToIdMap)

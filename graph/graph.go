@@ -3,11 +3,12 @@ package graph
 import (
 	"encoding/json"
 	"fmt"
-	semver2 "github.com/blang/semver/v4"
+	semver "github.com/Masterminds/semver"
 	"gonum.org/v1/gonum/graph/encoding/dot"
 	"gonum.org/v1/gonum/graph/simple"
 	"log"
 	"os"
+	"regexp"
 )
 
 type VersionInfo struct {
@@ -56,6 +57,14 @@ func CreateStringIDToNodeInfoMap(packagesInfo *[]PackageInfo, graph *simple.Dire
 	return &stringIDToNodeInfoMap
 }
 
+func CreateNodeIdToPackageMap(m *map[string]NodeInfo) *map[int64]NodeInfo {
+	s := make(map[int64]NodeInfo, len(*m))
+	for _, val := range *m {
+		s[val.id] = val
+	}
+	return &s
+}
+
 func CreateNameToVersionMap(m *[]PackageInfo) *map[string][]string {
 	newMap := make(map[string][]string, len(*m))
 	for _, value := range *m {
@@ -67,8 +76,7 @@ func CreateNameToVersionMap(m *[]PackageInfo) *map[string][]string {
 	return &newMap
 }
 
-//Function to write the simple graph to a dot file so it could be visualized with GraphViz
-//TODO Find out how to add the labels to the nodes
+//Function to write the simple graph to a dot file so it could be visualized with GraphViz. This includes only Ids
 func Visualization(graph *simple.DirectedGraph, name string) {
 	result, _ := dot.Marshal(graph, name, "", "  ")
 
@@ -83,23 +91,61 @@ func Visualization(graph *simple.DirectedGraph, name string) {
 
 }
 
+//Writes to dot file manually from the NodeInfoMap to include the Node info in the graphViz
+//TODO: Optimize in the future since this is kind of barbaric probably there is a faster way.
+func VisualizationNodeInfo(iDToNodeInfo *map[string]NodeInfo, graph *simple.DirectedGraph, name string) {
+	file, err := os.Create(name + ".dot")
+	d1 := []byte("strict digraph" + " " + name + " " + "{\n")
+	d2 := []byte("}")
+	lab := string("[label = \" ")
+	edgIt := graph.Edges()
+
+	fmt.Fprintf(file, string(d1))
+
+	for key, element := range *iDToNodeInfo {
+		//fmt.Println("Key:", key, "=>", "Element:", element.id)
+		fmt.Fprintf(file, fmt.Sprint(element.id)+lab+string(key)+` \n `+string(element.Version)+` \n `+string(element.Timestamp)+"\""+"];\n")
+
+	}
+
+	for edgIt.Next() {
+		fmt.Fprintf(file, fmt.Sprint(edgIt.Edge().From().ID())+" -> "+fmt.Sprint(edgIt.Edge().To().ID())+";\n")
+	}
+
+	fmt.Fprintf(file, string(d2))
+
+	if err != nil {
+		panic(err)
+	}
+
+	defer file.Close()
+
+}
+
 // CreateEdges takes a graph, a list of packages and their dependencies, a map of stringIDs to NodeInfo and
 // a map of names to versions and creates directed edges between the dependent library and its dependencies.
 // TODO: add documentation on how we use semver for edges
 // TODO: Discuss removing pointers from maps since they are reference types without the need of using * : https://stackoverflow.com/questions/40680981/are-maps-passed-by-value-or-by-reference-in-go
-func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, stringIDToNodeInfo *map[string]NodeInfo, nameToVersionMap *map[string][]string) {
+func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, stringIDToNodeInfo *map[string]NodeInfo, nameToVersionMap *map[string][]string, isMaven bool) {
 	packagesInfo := *inputList // Dereferencing here results in copying the whole list. Maybe we can just use the dereferencing without the assigning as to avoid copying things
 	nameToVersion := *nameToVersionMap
+	r, _ := regexp.Compile("((?P<open>[\\(\\[])(?P<bothVer>((?P<firstVer>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)(?P<comma1>,)(?P<secondVer1>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?)|((?P<comma2>,)?(?P<secondVer2>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?))(?P<close>[\\)\\]]))|(?P<simplevers>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)")
 	for id, packageInfo := range packagesInfo {
 		for _, dependencyInfo := range packageInfo.Versions {
 			for dependencyName, dependencyVersion := range dependencyInfo.Dependencies {
-				c, err := semver2.ParseRange(dependencyVersion)
+				finaldep := dependencyVersion
+				if isMaven {
+					finaldep = parseMultipleMavenSemVers(dependencyVersion, r)
+				}
+				constraint, err := semver.NewConstraint(finaldep)
+				//c, err := semver2.ParseRange(dependencyVersion)
 				if err != nil {
-					panic(err)
+					log.Fatal(err)
 				}
 				for _, v := range nameToVersion[dependencyName] {
-					newVersion, _ := semver2.Parse(v)
-					if c(newVersion) {
+					//newVersion, _ := semver2.Parse(v)
+					newVersion, _ := semver.NewVersion(v)
+					if constraint.Check(newVersion) {
 						dependencyNameVersionString := fmt.Sprintf("%s-%s", dependencyName, v)
 						dependencyNode := graph.Node((*stringIDToNodeInfo)[dependencyNameVersionString].id)
 						packageNode := graph.Node(int64(id))
@@ -109,6 +155,85 @@ func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, stringID
 			}
 		}
 	}
+}
+
+func parseMultipleMavenSemVers(s string, reg *regexp.Regexp) string {
+	var finalResult string
+	chars := []rune(s)
+	openIndex := 0
+	closeIndex := 0
+	for i := 0; i < len(chars); i++ {
+		char := string(chars[i])
+		if char == "(" || char == "[" {
+			openIndex = i
+		}
+		if char == ")" || char == "]" {
+			closeIndex = i
+			if i != len(chars)-1 {
+				finalResult += translateMavenSemver(s[openIndex:closeIndex+1], reg) + " || "
+			} else {
+				finalResult += translateMavenSemver(s[openIndex:closeIndex+1], reg)
+			}
+		}
+
+	}
+	if closeIndex == 0 && openIndex == 0 {
+		return translateMavenSemver(s, reg)
+	}
+
+	return finalResult
+}
+
+func translateMavenSemver(s string, reg *regexp.Regexp) string {
+	match := reg.FindStringSubmatch(s)
+	result := make(map[string]string)
+	var finalResult string
+	for i, name := range reg.SubexpNames() {
+		if i != 0 && name != "" {
+			result[name] = match[i]
+		}
+		fmt.Printf("by name: %s %s\n", result["singur"])
+	}
+	if len(result["close"]) > 0 {
+		if len(result["secondVer2"]) > 0 {
+			if len(result["comma1"]) > 0 || len(result["comma2"]) > 0 {
+				switch result["close"] {
+				case "]":
+					finalResult = "<= " + result["secondVer2"]
+				case ")":
+					finalResult = "< " + result["secondVer2"]
+				}
+			} else {
+				finalResult = "= " + result["secondVer2"]
+			}
+		} else {
+			if len(result["firstVer"]) > 0 && len(result["secondVer1"]) > 0 {
+				switch result["open"] {
+				case "[":
+					finalResult = ">= " + result["firstVer"] + ", "
+				case "(":
+					finalResult = "> " + result["firstVer"] + ", "
+				}
+				switch result["close"] {
+				case "]":
+					finalResult += "<= " + result["secondVer1"]
+				case ")":
+					finalResult += "< " + result["secondVer1"]
+				}
+			} else if len(result["firstVer"]) > 0 && len(result["secondVer1"]) == 0 {
+				switch result["open"] {
+				case "[":
+					finalResult = ">= " + result["firstVer"]
+				case "(":
+					finalResult = "> " + result["firstVer"]
+				}
+			}
+		}
+	} else {
+		finalResult = ">= " + result["simplevers"]
+	}
+	return finalResult
+
 }
 
 func ParseJSON(inPath string) *[]PackageInfo {
