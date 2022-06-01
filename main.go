@@ -17,6 +17,7 @@ func inInterval(t, begin, end time.Time) bool {
 }
 
 func main() {
+	//TODO: Move to graph.go; Integrate nicely with cli
 	// To use the cli: go run main.go start.
 	cmd.Execute()
 	duration := 365 * 24 * time.Hour
