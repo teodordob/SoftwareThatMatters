@@ -28,10 +28,7 @@ func main() {
 	// This stores whether the package existed in the specified time range
 	withinInterval := make(map[int64]bool, len(nodeMap))
 	// This keeps track of which nodes we visited
-	visited := make(map[int64]bool, len(nodeMap))
-	// This will be used to reconstruct the edges
-	traversed := make(map[int64]map[int64]bool, len(nodeMap))
-	_ = []any{traversed} // To make the compiler happy
+	traversed := make([][]bool, len(nodeMap))
 	nodes := graph1.Nodes()
 	for nodes.Next() {
 		n := nodes.Node()
@@ -41,22 +38,21 @@ func main() {
 			withinInterval[id] = true
 		}
 	}
-	//TODO: Return a graph only keeping nodes and edges that are in the set of visited nodes
+	// TODO: Remove edges that were not visited
 	w := traverse.DepthFirst{
-		Visit: func(n graph.Node) {
-			visited[n.ID()] = true // Mark this node as visited
-		},
 		Traverse: func(e graph.Edge) bool { // The dependent / parent node
-			var traversed bool
+			var traverse bool
 			fromId := e.From().ID()
 			toId := e.To().ID()
 			if withinInterval[toId] {
 				fromTime, _ := time.Parse(time.RFC3339, nodeMap[fromId].Timestamp) // The dependent node's time stamp
 				toTime, _ := time.Parse(time.RFC3339, nodeMap[toId].Timestamp)     // The dependency node's time stamp
-				traversed = fromTime.After(toTime)                                 // If the dependency was released before the parent node, keep this edge connected
-				return traversed
+				if traverse = fromTime.After(toTime); traverse {
+					traversed[fromId][toId] = true
+				} // If the dependency was released before the parent node, keep this edge connected
 			}
-			return traversed
+
+			return traverse
 		},
 	}
 	nodes = graph1.Nodes()
