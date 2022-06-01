@@ -1,8 +1,6 @@
 package main
 
 import (
-	//"fmt"
-
 	"fmt"
 
 	g "github.com/AJMBrands/SoftwareThatMatters/graph"
@@ -17,14 +15,13 @@ func main() {
 	graph1 := simple.NewDirectedGraph()
 	stringIDToNodeInfo := g.CreateStringIDToNodeInfoMap(parsed, graph1)
 	nameToVersions := g.CreateNameToVersionMap(parsed)
-	idToPackageMap := g.CreateNodeIdToPackageMap(stringIDToNodeInfo)
+	//idToPackageMap := g.CreateNodeIdToPackageMap(stringIDToNodeInfo)
 	g.CreateEdges(graph1, parsed, stringIDToNodeInfo, nameToVersions, true)
 	//g.Visualization(graph, "graph2")
 	//fmt.Println(stringIDToNodeInfo)
 	w := traverse.DepthFirst{
-		Visit: func(node graph.Node) {
-			x1 := idToPackageMap
-			fmt.Println(x1[node.ID()])
+		Traverse: func(e graph.Edge) bool {
+			return false
 		},
 	}
 	x := w.Walk(graph1, graph1.Node(0), nil)
