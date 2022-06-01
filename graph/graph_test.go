@@ -5,6 +5,8 @@ import (
 	"testing"
 )
 
+// TODO: Test ParseJSON
+
 func nodeInfosEqual(expected, actual NodeInfo) bool {
 	return expected.Name == actual.Name && expected.Version == actual.Version && expected.Timestamp == actual.Timestamp
 }
@@ -17,8 +19,6 @@ func createTestNodeInfo(pi PackageInfo, version string) NodeInfo {
 		Version:   version,
 		Timestamp: pi.Versions[version].Timestamp,
 	}
-
-// TODO: Test ParseJSON
 
 func TestCreateEdgesBasicGraph(t *testing.T) {
 	simplePackagesInfo := []PackageInfo{
@@ -68,6 +68,7 @@ func TestCreateEdgesBasicGraph(t *testing.T) {
 		}
 	})
 }
+
 func TestCreateEdgesMediumComplexityGraph(t *testing.T) {
 	packagesInfo := []PackageInfo{
 		{
