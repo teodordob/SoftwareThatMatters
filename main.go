@@ -27,7 +27,11 @@ func main() {
 	graph1, _, _, nodeMap, _ = g.CreateGraph("data/input/test_data.json", true)
 	// This stores whether the package existed in the specified time range
 	withinInterval := make(map[int64]bool, len(nodeMap))
+	// This keeps track of which nodes we visited
 	visited := make(map[int64]bool, len(nodeMap))
+	// This will be used to reconstruct the edges
+	traversed := make(map[int64]map[int64]bool, len(nodeMap))
+	_ = []any{traversed} // To make the compiler happy
 	nodes := graph1.Nodes()
 	for nodes.Next() {
 		n := nodes.Node()
@@ -37,25 +41,33 @@ func main() {
 			withinInterval[id] = true
 		}
 	}
-	//TODO: Use w.WalkAll and use 'Visit' function to mark visited nodes.
+	//TODO: Return a graph only keeping nodes and edges that are in the set of visited nodes
 	w := traverse.DepthFirst{
 		Visit: func(n graph.Node) {
 			visited[n.ID()] = true // Mark this node as visited
 		},
 		Traverse: func(e graph.Edge) bool { // The dependent / parent node
+			var traversed bool
 			fromId := e.From().ID()
-			if withinInterval[fromId] { // Only if the parent node is within the specified time frame will we even consider its child.
-				toId := e.To().ID()
-				if withinInterval[toId] {
-					fromTime, _ := time.Parse(time.RFC3339, nodeMap[fromId].Timestamp) // The dependent node's time stamp
-					toTime, _ := time.Parse(time.RFC3339, nodeMap[toId].Timestamp)     // The dependency node's time stamp
-					return fromTime.After(toTime)                                      // If the dependency was released before the parent node, keep this edge connected
-				}
+			toId := e.To().ID()
+			if withinInterval[toId] {
+				fromTime, _ := time.Parse(time.RFC3339, nodeMap[fromId].Timestamp) // The dependent node's time stamp
+				toTime, _ := time.Parse(time.RFC3339, nodeMap[toId].Timestamp)     // The dependency node's time stamp
+				traversed = fromTime.After(toTime)                                 // If the dependency was released before the parent node, keep this edge connected
+				return traversed
 			}
-			return false
+			return traversed
 		},
 	}
-	_ = w.Walk(graph1, graph1.Node(0), nil)
+	nodes = graph1.Nodes()
+	for nodes.Next() {
+		n := nodes.Node()
+		if withinInterval[n.ID()] { // We'll only consider traversing this subtree if its root was in the specified time interval
+			_ = w.Walk(graph1, n, nil) // Continue walking this node we've visited everything we're allowed to according to Traverse
+			w.Reset()                  // Clean up for the next iteration
+		}
+	}
+
 	_ = network.PageRank(graph1, 0.85, 0.00001)
 	//Uncomment this to create the visualization and use these commands in the dot file
 	//Toggle Preview - ctrl+shift+v (Mac: cmd+shift+v)
