@@ -44,14 +44,16 @@ func NewNodeInfo(id int64, name string, version string, timestamp string) *NodeI
 // CreateStringIDToNodeInfoMap takes a list of PackageInfo and a simple.DirectedGraph. For each of the packages,
 // it creates a mapping of stringIDs to NodeInfo and also adds a node to the graph. The handling of the IDs is delegated
 // to Gonum. These IDs are also included in the mapping for ease of access.
-func CreateStringIDToNodeInfoMap(packagesInfo *[]PackageInfo, graph *simple.DirectedGraph) map[string]NodeInfo {
+func CreateStringIDToNodeInfoMap(packagesInfo *[]PackageInfo, graph *simple.DirectedGraph, idToNodeInfo map[int64]NodeInfo) map[string]NodeInfo {
 	stringIDToNodeInfoMap := make(map[string]NodeInfo, len(*packagesInfo))
 	for _, packageInfo := range *packagesInfo {
 		for packageVersion, versionInfo := range packageInfo.Versions {
 			packageNameVersionString := fmt.Sprintf("%s-%s", packageInfo.Name, packageVersion)
 			// Delegate the work of creating a unique ID to Gonum
 			newNode := graph.NewNode()
-			stringIDToNodeInfoMap[packageNameVersionString] = *NewNodeInfo(newNode.ID(), packageInfo.Name, packageVersion, versionInfo.Timestamp)
+			newId := newNode.ID()
+			stringIDToNodeInfoMap[packageNameVersionString] = *NewNodeInfo(newId, packageInfo.Name, packageVersion, versionInfo.Timestamp)
+			// idToNodeInfo[newId] =
 			graph.AddNode(newNode)
 		}
 	}
@@ -275,8 +277,8 @@ func ParseJSON(inPath string) *[]PackageInfo {
 func CreateGraph(inputPath string, isUsingMaven bool) (*simple.DirectedGraph, *[]PackageInfo, map[string]NodeInfo, map[int64]NodeInfo, map[string][]string) {
 	packagesList := ParseJSON(inputPath)
 	graph := simple.NewDirectedGraph()
-	stringIDToNodeInfo := CreateStringIDToNodeInfoMap(packagesList, graph)
-	idToNodeInfo := CreateNodeIdToPackageMap(stringIDToNodeInfo)
+	idToNodeInfo := make(map[int64]NodeInfo, len(*packagesList))
+	stringIDToNodeInfo := CreateStringIDToNodeInfoMap(packagesList, graph, idToNodeInfo)
 	nameToVersions := CreateNameToVersionMap(packagesList)
 	CreateEdges(graph, packagesList, stringIDToNodeInfo, nameToVersions, isUsingMaven)
 	return graph, packagesList, stringIDToNodeInfo, idToNodeInfo, nameToVersions
