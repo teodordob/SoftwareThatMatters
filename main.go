@@ -1,9 +1,9 @@
 package main
 
 import (
-
 	"time"
 
+	"github.com/AJMBrands/SoftwareThatMatters/cmd"
 	g "github.com/AJMBrands/SoftwareThatMatters/graph"
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/network"
@@ -17,6 +17,8 @@ func inInterval(t, begin, end time.Time) bool {
 }
 
 func main() {
+	// To use the cli: go run main.go start.
+	cmd.Execute()
 	duration := 365 * 24 * time.Hour
 	beginTime, _ := time.Parse(time.RFC3339, "2021-01-01T00:00:00Z01:00")
 	endTime := beginTime.Add(duration)
@@ -61,8 +63,7 @@ func main() {
 	traverseAndRemove(nodes, graph1, withinInterval, w, traversed)
 
 	_ = network.PageRank(graph1, 0.85, 0.00001)
-	// To use the cli: go run main.go start.
-	cmd.Execute()
+
 	//Uncomment this to create the visualization and use these commands in the dot file
 	//Toggle Preview - ctrl+shift+v (Mac: cmd+shift+v)
 	//Open Preview to the Side - ctrl+k v (Mac: cmd+k shift+v)
