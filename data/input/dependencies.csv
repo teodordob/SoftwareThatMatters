@@ -1,0 +1,36 @@
+name,version,upload_time,dependency,dependency_version,author
+ws-sizzle,0.0.8,2020-12-23T22:08:32,json-rpc,>=1.13.0,Dmitry Berezovsky
+ws-sizzle,0.0.8,2020-12-23T22:08:32,pydantic,>=1.6,Dmitry Berezovsky
+ws-sizzle,0.0.8,2020-12-23T22:08:32,aiohttp,*,Dmitry Berezovsky
+ws-sizzle,0.0.8,2020-12-23T22:08:32,requests,*,Dmitry Berezovsky
+ws-sizzle,0.0.8,2020-12-23T22:08:32,tornado,*,Dmitry Berezovsky
+ws-sizzle,0.0.8,2020-12-23T22:08:32,websockets,*,Dmitry Berezovsky
+ws-ui,1.0.0,2021-02-21T15:59:48,tornado,*,Abraham
+ws-ui,1.0.0,2021-02-21T15:59:48,prompt-toolkit,*,Abraham
+ws-watcher,0.5,2021-03-14T03:06:40,websockets,*,Sergei Minaev
+ws-watcher,0.5,2021-03-14T03:06:40,asyncio,*,Sergei Minaev
+ws-watcher,0.5,2021-03-14T03:06:40,inotify,*,Sergei Minaev
+odoo12-addon-account-invoice-report-grouped-by-picking-sale-mrp,12.0.1.0.2,2021-03-04T06:10:54,odoo12-addon-account-invoice-report-grouped-by-picking,*,"Tecnativa, Odoo Community Association (OCA)"
+odoo12-addon-account-invoice-report-grouped-by-picking-sale-mrp,12.0.1.0.2,2021-03-04T06:10:54,odoo,"<12.1dev,>=12.0a","Tecnativa, Odoo Community Association (OCA)"
+ServoRPi,0.1.6,2021-02-22T08:36:00,rpi.gpio,*,AI Versity
+odoo12-addon-account-invoice-report-hide-line,12.0.1.0.0.99.dev8,2021-03-12T05:40:27,odoo,"<12.1dev,>=12.0a","Open Source Integrators, Odoo Community Association (OCA)"
+odoo12-addon-account-invoice-report-payment-info,12.0.1.0.0.99.dev4,2021-03-12T06:35:58,odoo,"<12.1dev,>=12.0a","Tecnativa, Odoo Community Association (OCA)"
+wscheck,1.3.2,2021-02-08T14:00:21,lxml,>=2.3,Andras Tim
+wscheck,1.3.2,2021-02-08T14:00:21,termcolor,"<1.2,>=1.1.0",Andras Tim
+wserver-compound,0.0.2,2021-09-14T10:17:20,qodex-pi,*,PunchyArchy
+wserver-compound,0.0.2,2021-09-14T10:17:20,wsqluse,*,PunchyArchy
+wserver-compound,0.0.2,2021-09-14T10:17:20,gc-qdk,*,PunchyArchy
+wserver-compound,0.0.2,2021-09-14T10:17:20,wta,*,PunchyArchy
+wserver-qdk,0.0.2,2021-09-30T08:23:18,qodex-dk,*,PunchyArchy
+PythonProj-Message-Client,0.0.1,2022-01-26T22:02:50,PyQt5,*,Sergey Zubkov
+PythonProj-Message-Client,0.0.1,2022-01-26T22:02:50,sqlalchemy,*,Sergey Zubkov
+PythonProj-Message-Client,0.0.1,2022-01-26T22:02:50,pycryptodome,*,Sergey Zubkov
+PythonProj-Message-Client,0.0.1,2022-01-26T22:02:50,pycryptodomex,*,Sergey Zubkov
+prisma-cloud-pipeline,0.1.5,2022-01-17T09:57:11,tabulate,">=0.8,<0.9",Michael Macnair
+prisma-cloud-pipeline,0.1.5,2022-01-17T09:57:11,jq,">=1.1,<1.3",Michael Macnair
+prisma-cloud-pipeline,0.1.5,2022-01-17T09:57:11,jsonschema,">=3.2,<4.4",Michael Macnair
+prisma-cloud-pipeline,0.1.5,2022-01-17T09:57:11,requests,">=2.25,<2.27",Michael Macnair
+prisma-cloud-pipeline,0.1.5,2022-01-17T09:57:11,pyyaml,">=5.3,<6.1",Michael Macnair
+prisma-cloud-pipeline,0.1.5,2022-01-17T09:57:11,types-requests,">=2.25.9,<3.0.0",Michael Macnair
+prisma-cloud-pipeline,0.1.5,2022-01-17T09:57:11,types-tabulate,">=0.8.2,<0.9.0",Michael Macnair
+prisma-cloud-pipeline,0.1.5,2022-01-17T09:57:11,types-PyYAML,">=5.4.10,<6.0.0",Michael Macnair
