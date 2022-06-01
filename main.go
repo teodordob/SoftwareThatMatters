@@ -61,7 +61,7 @@ func main() {
 		},
 	}
 
-	traverseAndRemove(nodes, graph1, withinInterval, w, traversed)
+	traverseAndRemove(graph1, withinInterval, w, traversed)
 
 	_ = network.PageRank(graph1, 0.85, 0.00001)
 
@@ -72,8 +72,8 @@ func main() {
 	// g.VisualizationNodeInfo(stringIDToNodeInfo, graph, "IDInfo")
 }
 
-func traverseAndRemove(nodes graph.Nodes, graph1 *simple.DirectedGraph, withinInterval map[int64]bool, w traverse.DepthFirst, traversed [][]bool) {
-	nodes = graph1.Nodes()
+func traverseAndRemove(graph1 *simple.DirectedGraph, withinInterval map[int64]bool, w traverse.DepthFirst, traversed [][]bool) {
+	nodes := graph1.Nodes()
 	for nodes.Next() {
 		n := nodes.Node()
 		if withinInterval[n.ID()] { // We'll only consider traversing this subtree if its root was within the specified time interval
