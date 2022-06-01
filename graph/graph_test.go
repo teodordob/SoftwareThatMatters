@@ -31,9 +31,9 @@ func TestNodeCreationBasicGraph(t *testing.T) {
 			},
 		},
 	}
-
+	dummyMap := make(map[int64]NodeInfo)
 	graph := simple.NewDirectedGraph()
-	stringMap := CreateStringIDToNodeInfoMap(&simplePackageInfo, graph)
+	stringMap := CreateStringIDToNodeInfoMap(&simplePackageInfo, graph, dummyMap)
 	nameVersion := CreateNameToVersionMap(&simplePackageInfo)
 	CreateEdges(graph, &simplePackageInfo, stringMap, nameVersion, false)
 
@@ -128,8 +128,9 @@ func TestNodeCreationMediumComplexity(t *testing.T) {
 		packageA,
 	}
 
+	dummyMap := make(map[int64]NodeInfo)
 	graph := simple.NewDirectedGraph()
-	stringNodeInfo := CreateStringIDToNodeInfoMap(&mediumPackageInfo, graph)
+	stringNodeInfo := CreateStringIDToNodeInfoMap(&mediumPackageInfo, graph, dummyMap)
 	nameVersion := CreateNameToVersionMap(&mediumPackageInfo)
 	CreateEdges(graph, &mediumPackageInfo, stringNodeInfo, nameVersion, false)
 
@@ -218,9 +219,9 @@ func TestCreateEdgesBasicGraph(t *testing.T) {
 			},
 		},
 	}
-
+	dummyMap := make(map[int64]NodeInfo)
 	graph := simple.NewDirectedGraph()
-	stringIDToNodeInfo := CreateStringIDToNodeInfoMap(&simplePackagesInfo, graph)
+	stringIDToNodeInfo := CreateStringIDToNodeInfoMap(&simplePackagesInfo, graph, dummyMap)
 	nameToVersions := CreateNameToVersionMap(&simplePackagesInfo)
 	CreateEdges(graph, &simplePackagesInfo, stringIDToNodeInfo, nameToVersions, false)
 
@@ -291,9 +292,9 @@ func TestCreateEdgesMediumComplexityGraph(t *testing.T) {
 			},
 		},
 	}
-
+	dummyMap := make(map[int64]NodeInfo)
 	graph := simple.NewDirectedGraph()
-	stringIDToNodeInfo := CreateStringIDToNodeInfoMap(&packagesInfo, graph)
+	stringIDToNodeInfo := CreateStringIDToNodeInfoMap(&packagesInfo, graph, dummyMap)
 	nameToVersions := CreateNameToVersionMap(&packagesInfo)
 	CreateEdges(graph, &packagesInfo, stringIDToNodeInfo, nameToVersions, false)
 	t.Run("Creates 6 edges when there are 6 possible dependencies", func(t *testing.T) {
