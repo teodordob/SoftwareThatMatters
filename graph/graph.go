@@ -130,9 +130,8 @@ func VisualizationNodeInfo(iDToNodeInfo *map[string]NodeInfo, graph *simple.Dire
 // TODO: add documentation on how we use semver for edges
 // TODO: Discuss removing pointers from maps since they are reference types without the need of using * : https://stackoverflow.com/questions/40680981/are-maps-passed-by-value-or-by-reference-in-go
 func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, stringIDToNodeInfo map[string]NodeInfo, nameToVersionMap map[string][]string, isMaven bool) {
-	packagesInfo := *inputList // Dereferencing here results in copying the whole list. Maybe we can just use the dereferencing without the assigning as to avoid copying things
 	r, _ := regexp.Compile("((?P<open>[\\(\\[])(?P<bothVer>((?P<firstVer>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)(?P<comma1>,)(?P<secondVer1>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?)|((?P<comma2>,)?(?P<secondVer2>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?))(?P<close>[\\)\\]]))|(?P<simplevers>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)")
-	for id, packageInfo := range packagesInfo {
+	for id, packageInfo := range *inputList {
 		for _, dependencyInfo := range packageInfo.Versions {
 			for dependencyName, dependencyVersion := range dependencyInfo.Dependencies {
 				finaldep := dependencyVersion
