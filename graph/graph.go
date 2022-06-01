@@ -3,7 +3,7 @@ package graph
 import (
 	"encoding/json"
 	"fmt"
-	semver "github.com/Masterminds/semver"
+	"github.com/Masterminds/semver"
 	"gonum.org/v1/gonum/graph/encoding/dot"
 	"gonum.org/v1/gonum/graph/simple"
 	"log"
@@ -43,7 +43,7 @@ func NewNodeInfo(id int64, name string, version string, timestamp string) *NodeI
 // CreateStringIDToNodeInfoMap takes a list of PackageInfo and a simple.DirectedGraph. For each of the packages,
 // it creates a mapping of stringIDs to NodeInfo and also adds a node to the graph. The handling of the IDs is delegated
 // to Gonum. These IDs are also included in the mapping for ease of access.
-func CreateStringIDToNodeInfoMap(packagesInfo *[]PackageInfo, graph *simple.DirectedGraph) *map[string]NodeInfo {
+func CreateStringIDToNodeInfoMap(packagesInfo *[]PackageInfo, graph *simple.DirectedGraph) map[string]NodeInfo {
 	stringIDToNodeInfoMap := make(map[string]NodeInfo, len(*packagesInfo))
 	for _, packageInfo := range *packagesInfo {
 		for packageVersion, versionInfo := range packageInfo.Versions {
@@ -54,18 +54,20 @@ func CreateStringIDToNodeInfoMap(packagesInfo *[]PackageInfo, graph *simple.Dire
 			graph.AddNode(newNode)
 		}
 	}
-	return &stringIDToNodeInfoMap
+	return stringIDToNodeInfoMap
 }
 
-func CreateNodeIdToPackageMap(m *map[string]NodeInfo) *map[int64]NodeInfo {
-	s := make(map[int64]NodeInfo, len(*m))
-	for _, val := range *m {
+// TODO: Maybe change to something like CreateIdToNodeInfoMap so it's not confusing for other people.
+
+func CreateNodeIdToPackageMap(m map[string]NodeInfo) map[int64]NodeInfo {
+	s := make(map[int64]NodeInfo, len(m))
+	for _, val := range m {
 		s[val.id] = val
 	}
-	return &s
+	return s
 }
 
-func CreateNameToVersionMap(m *[]PackageInfo) *map[string][]string {
+func CreateNameToVersionMap(m *[]PackageInfo) map[string][]string {
 	newMap := make(map[string][]string, len(*m))
 	for _, value := range *m {
 		name := value.Name
@@ -73,7 +75,7 @@ func CreateNameToVersionMap(m *[]PackageInfo) *map[string][]string {
 			newMap[name] = append(newMap[name], k)
 		}
 	}
-	return &newMap
+	return newMap
 }
 
 //Function to write the simple graph to a dot file so it could be visualized with GraphViz. This includes only Ids
@@ -126,9 +128,8 @@ func VisualizationNodeInfo(iDToNodeInfo *map[string]NodeInfo, graph *simple.Dire
 // a map of names to versions and creates directed edges between the dependent library and its dependencies.
 // TODO: add documentation on how we use semver for edges
 // TODO: Discuss removing pointers from maps since they are reference types without the need of using * : https://stackoverflow.com/questions/40680981/are-maps-passed-by-value-or-by-reference-in-go
-func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, stringIDToNodeInfo *map[string]NodeInfo, nameToVersionMap *map[string][]string, isMaven bool) {
+func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, stringIDToNodeInfo map[string]NodeInfo, nameToVersionMap map[string][]string, isMaven bool) {
 	packagesInfo := *inputList // Dereferencing here results in copying the whole list. Maybe we can just use the dereferencing without the assigning as to avoid copying things
-	nameToVersion := *nameToVersionMap
 	r, _ := regexp.Compile("((?P<open>[\\(\\[])(?P<bothVer>((?P<firstVer>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)(?P<comma1>,)(?P<secondVer1>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?)|((?P<comma2>,)?(?P<secondVer2>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?))(?P<close>[\\)\\]]))|(?P<simplevers>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)")
 	for id, packageInfo := range packagesInfo {
 		for _, dependencyInfo := range packageInfo.Versions {
@@ -142,12 +143,12 @@ func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, stringID
 				if err != nil {
 					log.Fatal(err)
 				}
-				for _, v := range nameToVersion[dependencyName] {
+				for _, v := range nameToVersionMap[dependencyName] {
 					//newVersion, _ := semver2.Parse(v)
 					newVersion, _ := semver.NewVersion(v)
 					if constraint.Check(newVersion) {
 						dependencyNameVersionString := fmt.Sprintf("%s-%s", dependencyName, v)
-						dependencyNode := graph.Node((*stringIDToNodeInfo)[dependencyNameVersionString].id)
+						dependencyNode := graph.Node(stringIDToNodeInfo[dependencyNameVersionString].id)
 						packageNode := graph.Node(int64(id))
 						graph.SetEdge(simple.Edge{F: packageNode, T: dependencyNode})
 					}
@@ -192,6 +193,7 @@ func translateMavenSemver(s string, reg *regexp.Regexp) string {
 		if i != 0 && name != "" {
 			result[name] = match[i]
 		}
+		//TODO: What is happening here?
 		fmt.Printf("by name: %s %s\n", result["singur"])
 	}
 	if len(result["close"]) > 0 {
@@ -267,4 +269,14 @@ func ParseJSON(inPath string) *[]PackageInfo {
 		log.Fatal(err)
 	}
 	return &result
+}
+
+func CreateGraph(inputPath string, isUsingMaven bool) (*simple.DirectedGraph, *[]PackageInfo, map[string]NodeInfo, map[int64]NodeInfo, map[string][]string) {
+	packagesList := ParseJSON(inputPath)
+	graph := simple.NewDirectedGraph()
+	stringIDToNodeInfo := CreateStringIDToNodeInfoMap(packagesList, graph)
+	idToNodeInfo := CreateNodeIdToPackageMap(stringIDToNodeInfo)
+	nameToVersions := CreateNameToVersionMap(packagesList)
+	CreateEdges(graph, packagesList, stringIDToNodeInfo, nameToVersions, isUsingMaven)
+	return graph, packagesList, stringIDToNodeInfo, idToNodeInfo, nameToVersions
 }

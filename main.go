@@ -1,17 +1,10 @@
 package main
 
-import (
-	//"fmt"
-
-	"fmt"
-	g "github.com/AJMBrands/SoftwareThatMatters/graph"
-	"gonum.org/v1/gonum/graph"
-	"gonum.org/v1/gonum/graph/network"
-	"gonum.org/v1/gonum/graph/simple"
-	"gonum.org/v1/gonum/graph/traverse"
-)
+import "github.com/AJMBrands/SoftwareThatMatters/cmd"
 
 func main() {
+	// To use the cli: go run main.go start.
+	cmd.Execute()
 	//x := g.PackageInfo{Name: "junit:junit", Versions: map[string]g.VersionInfo{"2020-10-11T15:19:50", map[string]string{"org.hamcrest:hamcrest-core": "1.3",
 	//	"org.hamcrest:hamcrest-library": "1.3"}}}
 	//x := g.PackageInfo{Name: "junit:junit", Versions: map[string]g.VersionInfo{"3.8.1": {"2020-10-11T15:19:50", map[string]string{"org.hamcrest:hamcrest-core": "1.3",
@@ -28,25 +21,25 @@ func main() {
 	//g1 := g.CreateGraph(m)
 	//fmt.Println(g1)
 
-	parsed := g.ParseJSON("data/input/test_data.json")
-	graph1 := simple.NewDirectedGraph()
-	stringIDToNodeInfo := g.CreateStringIDToNodeInfoMap(parsed, graph1)
-	nameToVersions := g.CreateNameToVersionMap(parsed)
-	idToPackageMap := g.CreateNodeIdToPackageMap(stringIDToNodeInfo)
-	g.CreateEdges(graph1, parsed, stringIDToNodeInfo, nameToVersions, true)
-	//g.Visualization(graph, "graph2")
-	//fmt.Println(stringIDToNodeInfo)
-	w := traverse.DepthFirst{
-		Visit: func(node graph.Node) {
-			x1 := *idToPackageMap
-			fmt.Println(x1[node.ID()])
-		},
-	}
-	x := w.Walk(graph1, graph1.Node(0), nil)
-	pageranking := network.PageRank(graph1, 0.85, 0.00001)
-
-	fmt.Println(x)
-	fmt.Println(pageranking)
+	//parsed := g.ParseJSON("data/input/test_data.json")
+	//graph1 := simple.NewDirectedGraph()
+	//stringIDToNodeInfo := g.CreateStringIDToNodeInfoMap(parsed, graph1)
+	//nameToVersions := g.CreateNameToVersionMap(parsed)
+	//idToPackageMap := g.CreateNodeIdToPackageMap(stringIDToNodeInfo)
+	//g.CreateEdges(graph1, parsed, stringIDToNodeInfo, nameToVersions, true)
+	////g.Visualization(graph, "graph2")
+	////fmt.Println(stringIDToNodeInfo)
+	//w := traverse.DepthFirst{
+	//	Visit: func(node graph.Node) {
+	//		x1 := *idToPackageMap
+	//		fmt.Println(x1[node.ID()])
+	//	},
+	//}
+	//x := w.Walk(graph1, graph1.Node(0), nil)
+	//pageranking := network.PageRank(graph1, 0.85, 0.00001)
+	//
+	//fmt.Println(x)
+	//fmt.Println(pageranking)
 	//Uncomment this to create the visualization and use these commands in the dot file
 	//Toggle Preview - ctrl+shift+v (Mac: cmd+shift+v)
 	//Open Preview to the Side - ctrl+k v (Mac: cmd+k shift+v)
