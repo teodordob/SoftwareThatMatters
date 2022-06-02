@@ -97,7 +97,7 @@ func start() {
 			}
 		case 1:
 			fmt.Println("This should find all the possible dependencies of a package")
-			name := generateAndRunPackageNamePrompt("Please input the package name")
+			name := generateAndRunPackageNamePrompt("Please input the package name", stringIDToNodeInfo)
 			nodes := g.GetTransitiveDependenciesNode(graph, idToNodeInfo, stringIDToNodeInfo, name)
 			for _, node := range *nodes {
 				fmt.Println(node)
@@ -105,6 +105,10 @@ func start() {
 
 		case 2:
 			fmt.Println("This should find all the possible dependencies of a package between two timestamps")
+			nodes := findAllDepedenciesOfAPackageBetweenTwoTimestamps(graph, idToNodeInfo, stringIDToNodeInfo)
+			for _, node := range *nodes {
+				fmt.Println(node)
+			}
 		case 3:
 			fmt.Println("This should find the most used package")
 		case 4:
@@ -165,12 +169,12 @@ func findAllPackagesBetweenTwoTimestamps(idToNodeInfo map[int64]g.NodeInfo) *[]g
 
 }
 
-func findAllDepedenciesOfAPackageBetweenTwoTimestamps(graph *simple.DirectedGraph, nodeMap map[int64]g.NodeInfo) {
+func findAllDepedenciesOfAPackageBetweenTwoTimestamps(graph *simple.DirectedGraph, nodeMap map[int64]g.NodeInfo, stringIDToNodeInfo map[string]g.NodeInfo) *[]g.NodeInfo {
 	beginTime := generateAndRunDatePrompt("Please input the beginning date of the interval (DD-MM-YYYY)")
 	endTime := generateAndRunDatePrompt("Please input the end date of the interval (DD-MM-YYYY)")
-
+	nodeStringId := generateAndRunPackageNamePrompt("Please input the name and the version of the package (name-version)", stringIDToNodeInfo)
 	g.FilterGraph(graph, nodeMap, beginTime, endTime)
-
+	return g.GetTransitiveDependenciesNode(graph, nodeMap, stringIDToNodeInfo, nodeStringId)
 }
 
 func generateAndRunDatePrompt(label string) time.Time {
@@ -206,11 +210,22 @@ func generateAndRunDatePrompt(label string) time.Time {
 
 }
 
-func generateAndRunPackageNamePrompt(label string) string {
+func generateAndRunPackageNamePrompt(label string, stringIDToNodeInfo map[string]g.NodeInfo) string {
+	validateString := func(input string) error {
+		if len(input) == 0 {
+			return errors.New("input cannot be empty")
+		}
+		if _, ok := stringIDToNodeInfo[input]; ok {
+			return nil
+		} else {
+			return errors.New("String id was not found \n")
+
+		}
+	}
 
 	packagePrompt := promptui.Prompt{
 		Label:    label,
-		Validate: nil,
+		Validate: validateString,
 	}
 	packageId, err := packagePrompt.Run()
 	if err != nil {
