@@ -6,10 +6,13 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"time"
 
 	"github.com/Masterminds/semver"
+	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/encoding/dot"
 	"gonum.org/v1/gonum/graph/simple"
+	"gonum.org/v1/gonum/graph/traverse"
 )
 
 type VersionInfo struct {
@@ -281,4 +284,75 @@ func CreateGraph(inputPath string, isUsingMaven bool) (*simple.DirectedGraph, *[
 	nameToVersions := CreateNameToVersionMap(packagesList)
 	CreateEdges(graph, packagesList, stringIDToNodeInfo, nameToVersions, isUsingMaven)
 	return graph, packagesList, stringIDToNodeInfo, idToNodeInfo, nameToVersions
+}
+
+// This function returns true when time t lies in the interval [begin, end], false otherwise
+func inInterval(t, begin, end time.Time) bool {
+	return t.Equal(begin) || t.Equal(end) || t.After(begin) && t.Before(end)
+}
+
+// This is a helper function used to initialize all required auxillary data structures for the graph traversal
+func initializeTraversal(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, traversed [][]bool, withinInterval map[int64]bool, beginTime time.Time, endTime time.Time, w traverse.DepthFirst) {
+	for from := range traversed {
+		traversed[from] = make([]bool, 0, len(nodeMap))
+	}
+	nodes := g.Nodes()
+	for nodes.Next() { // Initialize withinInterval data structure
+		n := nodes.Node()
+		id := n.ID()
+		publishTime, _ := time.Parse(time.RFC3339, nodeMap[id].Timestamp)
+		if inInterval(publishTime, beginTime, endTime) {
+			withinInterval[id] = true
+		}
+	}
+
+	// TODO: Discuss if we should just leave packages free-floating if they haven't been visited even once
+	w = traverse.DepthFirst{
+		Traverse: func(e graph.Edge) bool { // The dependent / parent node
+			var traverse bool
+			fromId := e.From().ID()
+			toId := e.To().ID()
+			if withinInterval[toId] {
+				fromTime, _ := time.Parse(time.RFC3339, nodeMap[fromId].Timestamp) // The dependent node's time stamp
+				toTime, _ := time.Parse(time.RFC3339, nodeMap[toId].Timestamp)     // The dependency node's time stamp
+				if traverse = fromTime.After(toTime); traverse {
+					traversed[fromId][toId] = true
+				} // If the dependency was released before the parent node, keep this edge connected
+			}
+
+			return traverse
+		},
+	}
+}
+
+// This function removes stale edges from the specified graph by doing a DFS with all packages as the root node in O(n^2)
+func traverseAndRemoveEdges(g *simple.DirectedGraph, withinInterval map[int64]bool, w traverse.DepthFirst, traversed [][]bool) {
+	nodes := g.Nodes()
+	for nodes.Next() {
+		n := nodes.Node()
+		if withinInterval[n.ID()] { // We'll only consider traversing this subtree if its root was within the specified time interval
+			_ = w.Walk(g, n, nil) // Continue walking this subtree until we've visited everything we're allowed to according to Traverse
+			w.Reset()             // Clean up for the next iteration
+		}
+	}
+
+	for from := range traversed {
+		for to, val := range traversed[from] {
+			if !val { // If this potential edge wasn't touched at all, remove it
+				g.RemoveEdge(int64(from), int64(to)) // Leaves unconnected nodes free-floating; ignores non-existent edges
+			}
+		}
+	}
+}
+
+func FilterGraph(graph *simple.DirectedGraph, nodeMap map[int64]NodeInfo, beginTime, endTime time.Time) {
+	// This stores whether the package existed in the specified time range
+	withinInterval := make(map[int64]bool, len(nodeMap))
+	// This keeps track of which edges we've visited
+	traversed := make([][]bool, len(nodeMap))
+	var w traverse.DepthFirst
+	initializeTraversal(graph, nodeMap, traversed, withinInterval, beginTime, endTime, w) // Initialize all auxillary data structures for the traversal
+
+	traverseAndRemoveEdges(graph, withinInterval, w, traversed) // Traverse the graph and remove stale edges
+
 }
