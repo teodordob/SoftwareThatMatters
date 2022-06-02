@@ -44,6 +44,10 @@ func NewNodeInfo(id int64, name string, version string, timestamp string) *NodeI
 		Timestamp: timestamp}
 }
 
+func (nodeInfo NodeInfo) String() string {
+	return fmt.Sprintf("Package: %v - Version: %v", nodeInfo.Name, nodeInfo.Version)
+}
+
 // CreateStringIDToNodeInfoMap takes a list of PackageInfo and a simple.DirectedGraph. For each of the packages,
 // it creates a mapping of stringIDs to NodeInfo and also adds a node to the graph. The handling of the IDs is delegated
 // to Gonum. These IDs are also included in the mapping for ease of access.
