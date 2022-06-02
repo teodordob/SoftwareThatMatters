@@ -297,10 +297,7 @@ func inInterval(t, begin, end time.Time) bool {
 }
 
 // This is a helper function used to initialize all required auxillary data structures for the graph traversal
-func initializeTraversal(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, traversed [][]bool, withinInterval map[int64]bool, beginTime time.Time, endTime time.Time, w traverse.DepthFirst) {
-	for from := range traversed {
-		traversed[from] = make([]bool, 0, len(nodeMap))
-	}
+func initializeTraversal(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, disconnected []EdgePair, withinInterval map[int64]bool, beginTime time.Time, endTime time.Time, w traverse.DepthFirst) {
 	nodes := g.Nodes()
 	for nodes.Next() { // Initialize withinInterval data structure
 		n := nodes.Node()
@@ -320,9 +317,9 @@ func initializeTraversal(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, tr
 			if withinInterval[toId] {
 				fromTime, _ := time.Parse(time.RFC3339, nodeMap[fromId].Timestamp) // The dependent node's time stamp
 				toTime, _ := time.Parse(time.RFC3339, nodeMap[toId].Timestamp)     // The dependency node's time stamp
-				if traverse = fromTime.After(toTime); traverse {
-					traversed[fromId][toId] = true
-				} // If the dependency was released before the parent node, keep this edge connected
+				if traverse = fromTime.After(toTime); !traverse {
+					disconnected = append(disconnected, EdgePair{From: fromId, To: toId})
+				} // If the dependency wasn't released before the parent node, add this edge to the disconnected nodes
 			}
 
 			return traverse
@@ -331,7 +328,7 @@ func initializeTraversal(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, tr
 }
 
 // This function removes stale edges from the specified graph by doing a DFS with all packages as the root node in O(n^2)
-func traverseAndRemoveEdges(g *simple.DirectedGraph, withinInterval map[int64]bool, w traverse.DepthFirst, traversed [][]bool) {
+func traverseAndRemoveEdges(g *simple.DirectedGraph, withinInterval map[int64]bool, w traverse.DepthFirst, disconnected []EdgePair) {
 	nodes := g.Nodes()
 	for nodes.Next() {
 		n := nodes.Node()
@@ -341,37 +338,28 @@ func traverseAndRemoveEdges(g *simple.DirectedGraph, withinInterval map[int64]bo
 		}
 	}
 
-	for from := range traversed {
-		for to, val := range traversed[from] {
-			if !val { // If this potential edge wasn't touched at all, remove it
-				g.RemoveEdge(int64(from), int64(to)) // Leaves unconnected nodes free-floating; ignores non-existent edges
-			}
-		}
+	for _, edge := range disconnected {
+		g.RemoveEdge(edge.From, edge.To) // Leaves unconnected nodes free-floating; ignores non-existent edges
 	}
 }
 
-func traverseOneNode(g *simple.DirectedGraph, nodeId int64, withinInterval map[int64]bool, w traverse.DepthFirst, traversed [][]bool) {
+func traverseOneNode(g *simple.DirectedGraph, nodeId int64, withinInterval map[int64]bool, w traverse.DepthFirst, disconnected []EdgePair) {
 	_ = w.Walk(g, g.Node(nodeId), nil)
 
-	for from := range traversed {
-		for to, val := range traversed[from] {
-			if !val {
-				g.RemoveEdge(int64(from), int64(to))
-			}
-		}
+	for _, edge := range disconnected {
+		g.RemoveEdge(edge.From, edge.To) // Leaves unconnected nodes free-floating; ignores non-existent edges
 	}
 }
 
 func FilterGraph(graph *simple.DirectedGraph, nodeMap map[int64]NodeInfo, beginTime, endTime time.Time) {
 	// This stores whether the package existed in the specified time range
 	withinInterval := make(map[int64]bool, len(nodeMap))
-	// This keeps track of which edges we've visited
-	traversed := make([][]bool, len(nodeMap))
-	_ = make([]EdgePair, 0, len(nodeMap)/2) // Preparation for visited edge "set"
+	// This keeps track of which edges we've disconnected
+	disconnected := make([]EdgePair, 0, len(nodeMap)*2)
 	var w traverse.DepthFirst
-	initializeTraversal(graph, nodeMap, traversed, withinInterval, beginTime, endTime, w) // Initialize all auxillary data structures for the traversal
+	initializeTraversal(graph, nodeMap, disconnected, withinInterval, beginTime, endTime, w) // Initialize all auxillary data structures for the traversal
 
-	traverseAndRemoveEdges(graph, withinInterval, w, traversed) // Traverse the graph and remove stale edges
+	traverseAndRemoveEdges(graph, withinInterval, w, disconnected) // Traverse the graph and remove stale edges
 
 }
 
@@ -387,11 +375,10 @@ func FilterNode(graph *simple.DirectedGraph, nodeMap map[int64]NodeInfo, stringM
 
 	// This stores whether the package existed in the specified time range
 	withinInterval := make(map[int64]bool, len(nodeMap))
-	// This keeps track of which edges we've visited
-	traversed := make([][]bool, len(nodeMap))
-	_ = make([]EdgePair, 0, len(nodeMap)/2) // Preparation for visited edge "set"
+	// This keeps track of which edges we've disconnected
+	disconnected := make([]EdgePair, 0, len(nodeMap)*2)
 	var w traverse.DepthFirst
-	initializeTraversal(graph, nodeMap, traversed, withinInterval, beginTime, endTime, w) // Initialize all auxillary data structures for the traversal
+	initializeTraversal(graph, nodeMap, disconnected, withinInterval, beginTime, endTime, w) // Initialize all auxillary data structures for the traversal
 
-	traverseOneNode(graph, nodeId, withinInterval, w, traversed)
+	traverseOneNode(graph, nodeId, withinInterval, w, disconnected)
 }
