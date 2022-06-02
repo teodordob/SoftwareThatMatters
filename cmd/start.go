@@ -3,13 +3,15 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	g "github.com/AJMBrands/SoftwareThatMatters/graph"
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/spf13/cobra"
 	"os"
 	"regexp"
 	"strings"
 	"time"
+
+	g "github.com/AJMBrands/SoftwareThatMatters/graph"
+	"github.com/spf13/cobra"
+	"gonum.org/v1/gonum/graph/simple"
 )
 
 // startCmd represents the start command
@@ -65,7 +67,7 @@ func start() {
 	}
 
 	//graph, packagesList, stringIDToNodeInfo, idToNodeInfo, nameToVersions := g.CreateGraph(path, isUsingMaven)
-	_, _, _, idToNodeInfo, _ := g.CreateGraph(path, isUsingMaven)
+	graph, _, stringIDToNodeInfo, idToNodeInfo, _ := g.CreateGraph(path, isUsingMaven)
 	// TODO: remove this when we use the actual variables. It is here to get rid of the unused variables warning
 	//_, _, _, _, _ = g.CreateGraph(path, isUsingMaven)
 
@@ -98,9 +100,18 @@ func start() {
 			}
 		case 1:
 			fmt.Println("This should find all the possible dependencies of a package")
+			name := generateAndRunPackageNamePrompt("Please input the package name", stringIDToNodeInfo)
+			nodes := g.GetTransitiveDependenciesNode(graph, idToNodeInfo, stringIDToNodeInfo, name)
+			for _, node := range *nodes {
+				fmt.Println(node)
+			}
 
 		case 2:
 			fmt.Println("This should find all the possible dependencies of a package between two timestamps")
+			nodes := findAllDependenciesOfAPackageBetweenTwoTimestamps(graph, idToNodeInfo, stringIDToNodeInfo)
+			for _, node := range *nodes {
+				fmt.Println(node)
+			}
 		case 3:
 			fmt.Println("This should find the most used package")
 		case 4:
@@ -147,7 +158,7 @@ func findAllPackagesBetweenTwoTimestamps(idToNodeInfo map[int64]g.NodeInfo) *[]g
 
 	for _, node := range idToNodeInfo {
 		//TODO: We need a way of properly parsing multiple times
-		nodeTime, err := time.Parse("2006-01-02T15:04:05", node.Timestamp)
+		nodeTime, err := time.Parse(time.RFC3339, node.Timestamp)
 		if err != nil {
 			fmt.Println("There was an error parsing the timestamps in the nodes!")
 			panic(err)
@@ -159,6 +170,14 @@ func findAllPackagesBetweenTwoTimestamps(idToNodeInfo map[int64]g.NodeInfo) *[]g
 
 	return &nodesInInterval
 
+}
+
+func findAllDependenciesOfAPackageBetweenTwoTimestamps(graph *simple.DirectedGraph, nodeMap map[int64]g.NodeInfo, stringIDToNodeInfo map[string]g.NodeInfo) *[]g.NodeInfo {
+	beginTime := generateAndRunDatePrompt("Please input the beginning date of the interval (DD-MM-YYYY)")
+	endTime := generateAndRunDatePrompt("Please input the end date of the interval (DD-MM-YYYY)")
+	nodeStringId := generateAndRunPackageNamePrompt("Please input the name and the version of the package (name-version)", stringIDToNodeInfo)
+	g.FilterGraph(graph, nodeMap, beginTime, endTime)
+	return g.GetTransitiveDependenciesNode(graph, nodeMap, stringIDToNodeInfo, nodeStringId)
 }
 
 func generateAndRunDatePrompt(message string) time.Time {
@@ -196,6 +215,36 @@ func generateAndRunDatePrompt(message string) time.Time {
 	time, _ := time.Parse("02-01-2006", timeString)
 	return time
 
+}
+
+func generateAndRunPackageNamePrompt(message string, stringIDToNodeInfo map[string]g.NodeInfo) string {
+	validateString := func(input interface{}) error {
+		str, ok := input.(string)
+		if !ok {
+			return errors.New("input is not a string")
+		}
+		if len(str) == 0 {
+			return errors.New("input cannot be empty")
+		}
+		if _, ok := stringIDToNodeInfo[str]; ok {
+			return nil
+		} else {
+			return errors.New("String id was not found \n")
+
+		}
+	}
+	
+	packagePrompt := &survey.Input{
+		Message: message,
+	}
+	packageID := ""
+	err := survey.AskOne(packagePrompt, &packageID, survey.WithValidator(validateString))
+
+	if err != nil {
+		panic(err)
+	}
+
+	return packageID
 }
 
 func init() {
