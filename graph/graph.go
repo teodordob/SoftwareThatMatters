@@ -396,7 +396,7 @@ func FilterNode(graph *simple.DirectedGraph, nodeMap map[int64]NodeInfo, stringM
 }
 
 // This function returns the specified node and its dependencies
-func ShowTransitiveDependenciesNode(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, stringMap map[string]NodeInfo, stringId string) *[]NodeInfo {
+func GetTransitiveDependenciesNode(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, stringMap map[string]NodeInfo, stringId string) *[]NodeInfo {
 	var nodeId int64
 	result := make([]NodeInfo, 0, len(nodeMap)/2)
 	if id, ok := findNode(stringMap, stringId); ok {

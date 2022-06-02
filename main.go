@@ -24,6 +24,7 @@ func main() {
 	g.FilterGraph(graph1, nodeMap, beginTime, endTime)
 
 	g.FilterNode(graph1, nodeMap, stringMap, "A-1.0.0", beginTime, endTime)
+	g.GetTransitiveDependenciesNode()
 	_ = network.PageRank(graph1, 0.85, 0.00001)
 
 	//Uncomment this to create the visualization and use these commands in the dot file
