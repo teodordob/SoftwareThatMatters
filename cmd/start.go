@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	g "github.com/AJMBrands/SoftwareThatMatters/graph"
-	"github.com/manifoldco/promptui"
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/spf13/cobra"
 	"os"
 	"regexp"
@@ -41,27 +41,28 @@ func start() {
 		return
 	}
 
-	fileSelectionPrompt := promptui.Select{
-		Label: "Please select the file you would like to use for the creation of the graph",
-		Items: *fileNames,
+	fileSelectionPrompt := &survey.Select{
+		Message: "Please select the file you would like to use for the creation of the graph",
+		Options: *fileNames,
 	}
-	_, file, err := fileSelectionPrompt.Run()
+	file := ""
+	err := survey.AskOne(fileSelectionPrompt, &file)
+	if err != nil {
+		panic(err)
+	}
 	path := "data/input/" + file
 
-	if err != nil {
-		fmt.Printf("Something went wrong!%v\n", err)
-	}
+	isUsingMaven := false
 
-	usingMavenPrompt := promptui.Select{
-		Label: "Is the packages data coming from Maven?",
-		Items: []string{"Yes", "No"},
+	usingMavenPrompt := &survey.Confirm{
+		Message: "Is the packages data coming from Maven?",
 	}
-	_, isUsingMavenString, err := usingMavenPrompt.Run()
-	if err != nil {
-		fmt.Printf("Something went wrong!%v\n", err)
-	}
-	isUsingMaven := strings.ToLower(isUsingMavenString) == "yes"
+	err = survey.AskOne(usingMavenPrompt, &isUsingMaven)
+
 	fmt.Println("Creating the graph. This make take a while!")
+	if err != nil {
+		panic(err)
+	}
 
 	//graph, packagesList, stringIDToNodeInfo, idToNodeInfo, nameToVersions := g.CreateGraph(path, isUsingMaven)
 	_, _, _, idToNodeInfo, _ := g.CreateGraph(path, isUsingMaven)
@@ -71,9 +72,10 @@ func start() {
 	//"View the graph", "View the packages list", "View the packages list with versions", "View the packages list with versions and dependencies"
 	stop := false
 	for !stop {
-		processPrompt := promptui.Select{
-			Label: "What would you like to do now?",
-			Items: []string{
+		operationIndex := 0
+		processPrompt := &survey.Select{
+			Message: "What would you like to do now?",
+			Options: []string{
 				"Find all packages between two timestamps",
 				"Find all the possible dependencies of a package",
 				"Find all the possible dependencies of a package between two timestamps",
@@ -81,12 +83,13 @@ func start() {
 				"Quit",
 			},
 		}
-		processIndex, _, err := processPrompt.Run()
+		err := survey.AskOne(processPrompt, &operationIndex)
+
 		if err != nil {
-			fmt.Printf("Something went wrong!%v\n", err)
+			panic(err)
 		}
 
-		switch processIndex {
+		switch operationIndex {
 		case 0:
 			fmt.Println("This should find all the packages between two timestamps")
 			nodes := findAllPackagesBetweenTwoTimestamps(idToNodeInfo)
@@ -158,17 +161,21 @@ func findAllPackagesBetweenTwoTimestamps(idToNodeInfo map[int64]g.NodeInfo) *[]g
 
 }
 
-func generateAndRunDatePrompt(label string) time.Time {
-	validateDate := func(input string) error {
-		if len(input) == 0 {
+func generateAndRunDatePrompt(message string) time.Time {
+	validateDate := func(input interface{}) error {
+		str, ok := input.(string)
+		if !ok {
+			return errors.New("input is not a string")
+		}
+		if len(str) == 0 {
 			return errors.New("input cannot be empty")
 		}
-		matched, _ := regexp.MatchString("\\d{2}-\\d{2}-\\d{4}", input)
+		matched, _ := regexp.MatchString("\\d{2}-\\d{2}-\\d{4}", str)
 		if !matched {
 			return errors.New("input must be in the format: DD-MM-YYYY")
 		}
-		if len(input) == 10 {
-			_, err := time.Parse("02-01-2006", input)
+		if len(str) == 10 {
+			_, err := time.Parse("02-01-2006", str)
 			if err != nil {
 				return errors.New("input must be a valid date")
 			}
@@ -176,12 +183,12 @@ func generateAndRunDatePrompt(label string) time.Time {
 		return nil
 	}
 
-	timePrompt := promptui.Prompt{
-		Label:    label,
-		Validate: validateDate,
+	timePrompt := &survey.Input{
+		Message: message,
 	}
+	timeString := ""
+	err := survey.AskOne(timePrompt, &timeString, survey.WithValidator(validateDate))
 
-	timeString, err := timePrompt.Run()
 	if err != nil {
 		panic(err)
 	}
