@@ -31,6 +31,21 @@ func main() {
 	withinInterval := make(map[int64]bool, len(nodeMap))
 	// This keeps track of which edges we've visited
 	traversed := make([][]bool, len(nodeMap))
+	var w traverse.DepthFirst
+	initializeTraversal(graph1, traversed, nodeMap, withinInterval, beginTime, endTime, w)
+
+	traverseAndRemove(graph1, withinInterval, w, traversed)
+
+	_ = network.PageRank(graph1, 0.85, 0.00001)
+
+	//Uncomment this to create the visualization and use these commands in the dot file
+	//Toggle Preview - ctrl+shift+v (Mac: cmd+shift+v)
+	//Open Preview to the Side - ctrl+k v (Mac: cmd+k shift+v)
+	// g.Visualization(graph, "OnlyIds")
+	// g.VisualizationNodeInfo(stringIDToNodeInfo, graph, "IDInfo")
+}
+
+func initializeTraversal(graph1 *simple.DirectedGraph, traversed [][]bool, nodeMap map[int64]g.NodeInfo, withinInterval map[int64]bool, beginTime time.Time, endTime time.Time, w traverse.DepthFirst) {
 	for from := range traversed {
 		traversed[from] = make([]bool, 0, len(nodeMap))
 	}
@@ -43,8 +58,9 @@ func main() {
 			withinInterval[id] = true
 		}
 	}
+
 	// TODO: Discuss if we should just leave packages free-floating if they haven't been visited even once
-	w := traverse.DepthFirst{
+	w = traverse.DepthFirst{
 		Traverse: func(e graph.Edge) bool { // The dependent / parent node
 			var traverse bool
 			fromId := e.From().ID()
@@ -60,16 +76,6 @@ func main() {
 			return traverse
 		},
 	}
-
-	traverseAndRemove(graph1, withinInterval, w, traversed)
-
-	_ = network.PageRank(graph1, 0.85, 0.00001)
-
-	//Uncomment this to create the visualization and use these commands in the dot file
-	//Toggle Preview - ctrl+shift+v (Mac: cmd+shift+v)
-	//Open Preview to the Side - ctrl+k v (Mac: cmd+k shift+v)
-	// g.Visualization(graph, "OnlyIds")
-	// g.VisualizationNodeInfo(stringIDToNodeInfo, graph, "IDInfo")
 }
 
 func traverseAndRemove(graph1 *simple.DirectedGraph, withinInterval map[int64]bool, w traverse.DepthFirst, traversed [][]bool) {
