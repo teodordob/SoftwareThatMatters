@@ -375,7 +375,16 @@ func FilterGraph(graph *simple.DirectedGraph, nodeMap map[int64]NodeInfo, beginT
 
 }
 
-func FilterNode(graph *simple.DirectedGraph, nodeMap map[int64]NodeInfo, nodeId int64, beginTime, endTime time.Time) {
+func FilterNode(graph *simple.DirectedGraph, nodeMap map[int64]NodeInfo, stringMap map[string]NodeInfo, stringId string, beginTime, endTime time.Time) {
+	var nodeId int64
+
+	if info, ok := stringMap[stringId]; ok {
+		nodeId = info.id
+	} else {
+		log.Printf("String id %s was not found \n", stringId)
+		return // This function is a no-op if we don't have a correct string id
+	}
+
 	// This stores whether the package existed in the specified time range
 	withinInterval := make(map[int64]bool, len(nodeMap))
 	// This keeps track of which edges we've visited

@@ -18,10 +18,12 @@ func main() {
 	endTime := beginTime.Add(duration)
 
 	var nodeMap map[int64]g.NodeInfo
+	var stringMap map[string]g.NodeInfo
 	var graph1 *simple.DirectedGraph
-	graph1, _, _, nodeMap, _ = g.CreateGraph("data/input/test_data.json", true)
-
+	graph1, _, stringMap, nodeMap, _ = g.CreateGraph("data/input/test_data.json", true)
 	g.FilterGraph(graph1, nodeMap, beginTime, endTime)
+
+	g.FilterNode(graph1, nodeMap, stringMap, "A-1.0.0", beginTime, endTime)
 	_ = network.PageRank(graph1, 0.85, 0.00001)
 
 	//Uncomment this to create the visualization and use these commands in the dot file
