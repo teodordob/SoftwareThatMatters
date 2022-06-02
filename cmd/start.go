@@ -1,12 +1,15 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	g "github.com/AJMBrands/SoftwareThatMatters/graph"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	"os"
+	"regexp"
 	"strings"
+	"time"
 )
 
 // startCmd represents the start command
@@ -61,18 +64,22 @@ func start() {
 	fmt.Println("Creating the graph. This make take a while!")
 
 	//graph, packagesList, stringIDToNodeInfo, idToNodeInfo, nameToVersions := g.CreateGraph(path, isUsingMaven)
+	_, _, _, idToNodeInfo, _ := g.CreateGraph(path, isUsingMaven)
 	// TODO: remove this when we use the actual variables. It is here to get rid of the unused variables warning
-	_, _, _, _, _ = g.CreateGraph(path, isUsingMaven)
+	//_, _, _, _, _ = g.CreateGraph(path, isUsingMaven)
 
 	//"View the graph", "View the packages list", "View the packages list with versions", "View the packages list with versions and dependencies"
 	stop := false
 	for !stop {
 		processPrompt := promptui.Select{
 			Label: "What would you like to do now?",
-			Items: []string{"Find all the possible dependencies of a package",
+			Items: []string{
+				"Find all packages between two timestamps",
+				"Find all the possible dependencies of a package",
 				"Find all the possible dependencies of a package between two timestamps",
 				"Find the most used package",
-				"Quit"},
+				"Quit",
+			},
 		}
 		processIndex, _, err := processPrompt.Run()
 		if err != nil {
@@ -80,14 +87,20 @@ func start() {
 		}
 
 		switch processIndex {
-		//Find all possible dependencies of a package
 		case 0:
-			fmt.Println("This should find all the possible dependencies of a package")
+			fmt.Println("This should find all the packages between two timestamps")
+			nodes := findAllPackagesBetweenTwoTimestamps(idToNodeInfo)
+			for _, node := range *nodes {
+				fmt.Println(node)
+			}
 		case 1:
-			fmt.Println("This should find all the possible dependencies of a package between two timestamps")
+			fmt.Println("This should find all the possible dependencies of a package")
+
 		case 2:
-			fmt.Println("This should find the most used package")
+			fmt.Println("This should find all the possible dependencies of a package between two timestamps")
 		case 3:
+			fmt.Println("This should find the most used package")
+		case 4:
 			fmt.Println("Stopping the program...")
 			stop = true
 		}
@@ -117,6 +130,65 @@ func getJSONFilesFromDataFolder() *[]string {
 
 	}
 	return &fileNames
+}
+
+func findAllPackagesBetweenTwoTimestamps(idToNodeInfo map[int64]g.NodeInfo) *[]g.NodeInfo {
+	//// TODO: Discuss if we should create a copy or not. My idea is that we should create a copy of the graph and then
+	//// TODO: use the copy to find the packages. This way we can use the original graph for other operations.
+	//graphCopy := *graph
+
+	beginTime := generateAndRunDatePrompt("Please input the beginning date of the interval (DD-MM-YYYY)")
+	endTime := generateAndRunDatePrompt("Please input the end date of the interval (DD-MM-YYYY)")
+
+	var nodesInInterval []g.NodeInfo
+
+	for _, node := range idToNodeInfo {
+		//TODO: We need a way of properly parsing multiple times
+		nodeTime, err := time.Parse("2006-01-02T15:04:05", node.Timestamp)
+		if err != nil {
+			fmt.Println("There was an error parsing the timestamps in the nodes!")
+			panic(err)
+		}
+		if g.InInterval(nodeTime, beginTime, endTime) {
+			nodesInInterval = append(nodesInInterval, node)
+		}
+	}
+
+	return &nodesInInterval
+
+}
+
+func generateAndRunDatePrompt(label string) time.Time {
+	validateDate := func(input string) error {
+		if len(input) == 0 {
+			return errors.New("input cannot be empty")
+		}
+		matched, _ := regexp.MatchString("\\d{2}-\\d{2}-\\d{4}", input)
+		if !matched {
+			return errors.New("input must be in the format: DD-MM-YYYY")
+		}
+		if len(input) == 10 {
+			_, err := time.Parse("02-01-2006", input)
+			if err != nil {
+				return errors.New("input must be a valid date")
+			}
+		}
+		return nil
+	}
+
+	timePrompt := promptui.Prompt{
+		Label:    label,
+		Validate: validateDate,
+	}
+
+	timeString, err := timePrompt.Run()
+	if err != nil {
+		panic(err)
+	}
+
+	time, _ := time.Parse("02-01-2006", timeString)
+	return time
+
 }
 
 func init() {

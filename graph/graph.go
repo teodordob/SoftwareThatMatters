@@ -6,10 +6,13 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"time"
 
 	"github.com/Masterminds/semver"
+	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/encoding/dot"
 	"gonum.org/v1/gonum/graph/simple"
+	"gonum.org/v1/gonum/graph/traverse"
 )
 
 type VersionInfo struct {
@@ -41,6 +44,10 @@ func NewNodeInfo(id int64, name string, version string, timestamp string) *NodeI
 		Timestamp: timestamp}
 }
 
+func (nodeInfo NodeInfo) String() string {
+	return fmt.Sprintf("Package: %v - Version: %v", nodeInfo.Name, nodeInfo.Version)
+}
+
 // CreateStringIDToNodeInfoMap takes a list of PackageInfo and a simple.DirectedGraph. For each of the packages,
 // it creates a mapping of stringIDs to NodeInfo and also adds a node to the graph. The handling of the IDs is delegated
 // to Gonum. These IDs are also included in the mapping for ease of access.
@@ -51,7 +58,9 @@ func CreateStringIDToNodeInfoMap(packagesInfo *[]PackageInfo, graph *simple.Dire
 			packageNameVersionString := fmt.Sprintf("%s-%s", packageInfo.Name, packageVersion)
 			// Delegate the work of creating a unique ID to Gonum
 			newNode := graph.NewNode()
-			stringIDToNodeInfoMap[packageNameVersionString] = *NewNodeInfo(newNode.ID(), packageInfo.Name, packageVersion, versionInfo.Timestamp)
+			newId := newNode.ID()
+			stringIDToNodeInfoMap[packageNameVersionString] = *NewNodeInfo(newId, packageInfo.Name, packageVersion, versionInfo.Timestamp)
+			// idToNodeInfo[newId] =
 			graph.AddNode(newNode)
 		}
 	}
@@ -130,9 +139,8 @@ func VisualizationNodeInfo(iDToNodeInfo *map[string]NodeInfo, graph *simple.Dire
 // TODO: add documentation on how we use semver for edges
 // TODO: Discuss removing pointers from maps since they are reference types without the need of using * : https://stackoverflow.com/questions/40680981/are-maps-passed-by-value-or-by-reference-in-go
 func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, stringIDToNodeInfo map[string]NodeInfo, nameToVersionMap map[string][]string, isMaven bool) {
-	packagesInfo := *inputList // Dereferencing here results in copying the whole list. Maybe we can just use the dereferencing without the assigning as to avoid copying things
 	r, _ := regexp.Compile("((?P<open>[\\(\\[])(?P<bothVer>((?P<firstVer>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)(?P<comma1>,)(?P<secondVer1>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?)|((?P<comma2>,)?(?P<secondVer2>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?))(?P<close>[\\)\\]]))|(?P<simplevers>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)")
-	for id, packageInfo := range packagesInfo {
+	for id, packageInfo := range *inputList {
 		for _, dependencyInfo := range packageInfo.Versions {
 			for dependencyName, dependencyVersion := range dependencyInfo.Dependencies {
 				finaldep := dependencyVersion
@@ -280,4 +288,138 @@ func CreateGraph(inputPath string, isUsingMaven bool) (*simple.DirectedGraph, *[
 	nameToVersions := CreateNameToVersionMap(packagesList)
 	CreateEdges(graph, packagesList, stringIDToNodeInfo, nameToVersions, isUsingMaven)
 	return graph, packagesList, stringIDToNodeInfo, idToNodeInfo, nameToVersions
+}
+
+// This function returns true when time t lies in the interval [begin, end], false otherwise
+func InInterval(t, begin, end time.Time) bool {
+	return t.Equal(begin) || t.Equal(end) || t.After(begin) && t.Before(end)
+}
+
+// This is a helper function used to initialize all required auxillary data structures for the graph traversal
+func initializeTraversal(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, connected []*graph.Edge, withinInterval map[int64]bool, beginTime time.Time, endTime time.Time, w traverse.DepthFirst) {
+	nodes := g.Nodes()
+	for nodes.Next() { // Initialize withinInterval data structure
+		n := nodes.Node()
+		id := n.ID()
+		publishTime, _ := time.Parse(time.RFC3339, nodeMap[id].Timestamp)
+		if InInterval(publishTime, beginTime, endTime) {
+			withinInterval[id] = true
+		}
+	}
+
+	// TODO: Discuss if we should just leave packages free-floating if they haven't been visited even once
+	w = traverse.DepthFirst{
+		Traverse: func(e graph.Edge) bool { // The dependent / parent node
+			var traverse bool
+			fromId := e.From().ID()
+			toId := e.To().ID()
+			if withinInterval[toId] {
+				fromTime, _ := time.Parse(time.RFC3339, nodeMap[fromId].Timestamp) // The dependent node's time stamp
+				toTime, _ := time.Parse(time.RFC3339, nodeMap[toId].Timestamp)     // The dependency node's time stamp
+				if traverse = fromTime.After(toTime); traverse {
+					connected = append(connected, &e)
+				} // If the dependency was released before the parent node, add this edge to the connected nodes
+			}
+
+			return traverse
+		},
+	}
+}
+
+func removeDisconnected(g *simple.DirectedGraph, connected []*graph.Edge) {
+	edges := g.Edges()
+	for edges.Next() {
+		edge := edges.Edge()
+		for _, disconnectedEdge := range connected { // Found that it's connected, move on
+			if edge == *disconnectedEdge {
+				break
+			} else {
+				g.RemoveEdge(edge.From().ID(), edge.To().ID())
+			}
+		}
+	}
+}
+
+// This function removes stale edges from the specified graph by doing a DFS with all packages as the root node in O(n^2)
+func traverseAndRemoveEdges(g *simple.DirectedGraph, withinInterval map[int64]bool, w traverse.DepthFirst, connected []*graph.Edge) {
+	nodes := g.Nodes()
+	for nodes.Next() {
+		n := nodes.Node()
+		if withinInterval[n.ID()] { // We'll only consider traversing this subtree if its root was within the specified time interval
+			_ = w.Walk(g, n, nil) // Continue walking this subtree until we've visited everything we're allowed to according to Traverse
+			w.Reset()             // Clean up for the next iteration
+		}
+	}
+
+	removeDisconnected(g, connected)
+
+}
+
+func traverseOneNode(g *simple.DirectedGraph, nodeId int64, withinInterval map[int64]bool, w traverse.DepthFirst, connected []*graph.Edge) {
+	_ = w.Walk(g, g.Node(nodeId), nil)
+	removeDisconnected(g, connected)
+}
+
+func FilterGraph(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, beginTime, endTime time.Time) {
+	// This stores whether the package existed in the specified time range
+	withinInterval := make(map[int64]bool, len(nodeMap))
+	// This keeps track of which edges we've connected
+	connected := make([]*graph.Edge, 0, len(nodeMap)*2)
+	var w traverse.DepthFirst
+	initializeTraversal(g, nodeMap, connected, withinInterval, beginTime, endTime, w) // Initialize all auxillary data structures for the traversal
+
+	traverseAndRemoveEdges(g, withinInterval, w, connected) // Traverse the graph and remove stale edges
+
+}
+
+func findNode(stringMap map[string]NodeInfo, stringId string) (int64, bool) {
+	var nodeId int64
+	var ok bool
+	if info, ok := stringMap[stringId]; ok {
+		nodeId = info.id
+		ok = true
+	} else {
+		log.Printf("String id %s was not found \n", stringId)
+		ok = false
+	}
+	return nodeId, ok
+}
+
+func FilterNode(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, stringMap map[string]NodeInfo, stringId string, beginTime, endTime time.Time) {
+
+	var nodeId int64
+	if id, ok := findNode(stringMap, stringId); ok {
+		nodeId = id
+	} else {
+		return // This function is a no-op if we don't have a correct string id
+	}
+
+	// This stores whether the package existed in the specified time range
+	withinInterval := make(map[int64]bool, len(nodeMap))
+	// This keeps track of which edges we've connected
+	connected := make([]*graph.Edge, 0, len(nodeMap)*2)
+	var w traverse.DepthFirst
+	initializeTraversal(g, nodeMap, connected, withinInterval, beginTime, endTime, w) // Initialize all auxillary data structures for the traversal
+
+	traverseOneNode(g, nodeId, withinInterval, w, connected)
+}
+
+// This function returns the specified node and its dependencies
+func GetTransitiveDependenciesNode(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, stringMap map[string]NodeInfo, stringId string) *[]NodeInfo {
+	var nodeId int64
+	result := make([]NodeInfo, 0, len(nodeMap)/2)
+	if id, ok := findNode(stringMap, stringId); ok {
+		nodeId = id
+	} else {
+		return &result // This function is a no-op if we don't have a correct string id
+	}
+
+	w := traverse.DepthFirst{
+		Visit: func(n graph.Node) {
+			result = append(result, nodeMap[n.ID()])
+		},
+	}
+
+	_ = w.Walk(g, g.Node(nodeId), nil)
+	return &result
 }
