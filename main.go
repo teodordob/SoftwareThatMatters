@@ -1,22 +1,28 @@
 package main
 
 import (
-	"github.com/AJMBrands/SoftwareThatMatters/cmd"
+	"fmt"
+	g "github.com/AJMBrands/SoftwareThatMatters/graph"
+	"gonum.org/v1/gonum/graph/simple"
 )
 
 func main() {
 	//TODO: Move to graph.go; Integrate nicely with cli
 	// To use the cli: go run main.go start.
-	cmd.Execute()
+	//cmd.Execute()
 	//duration := 365 * 24 * time.Hour
 	//beginTime, _ := time.Parse(time.RFC3339, "2021-01-01T00:00:00Z01:00")
 	//endTime := beginTime.Add(duration)
-	//
-	//var nodeMap map[int64]g.NodeInfo
-	//var graph1 *simple.DirectedGraph
-	//graph1, _, _, nodeMap, _ = g.CreateGraph("data/input/test_data.json", true)
-	//
+	////
+	var nodeMap map[int64]g.NodeInfo
+	var graph1 *simple.DirectedGraph
+	var stringIDToNodeInfo map[string]g.NodeInfo
+	graph1, _, stringIDToNodeInfo, nodeMap, _ = g.CreateGraph("data/input/processed-10k.json", false)
+	x := g.GetTransitiveDependenciesNode(graph1, nodeMap, stringIDToNodeInfo, "1221-1.0.0")
+	fmt.Println(x)
+	////
 	//g.FilterGraph(graph1, nodeMap, beginTime, endTime)
+	//fmt.Println(graph1)
 	//_ = network.PageRank(graph1, 0.85, 0.00001)
 
 	//var nodeMap map[int64]g.NodeInfo

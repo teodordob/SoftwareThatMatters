@@ -6,6 +6,7 @@ import (
 	g "github.com/AJMBrands/SoftwareThatMatters/graph"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
+	"gonum.org/v1/gonum/graph/simple"
 	"os"
 	"regexp"
 	"strings"
@@ -144,7 +145,7 @@ func findAllPackagesBetweenTwoTimestamps(idToNodeInfo map[int64]g.NodeInfo) *[]g
 
 	for _, node := range idToNodeInfo {
 		//TODO: We need a way of properly parsing multiple times
-		nodeTime, err := time.Parse("2006-01-02T15:04:05", node.Timestamp)
+		nodeTime, err := time.Parse(time.RFC3339, node.Timestamp)
 		if err != nil {
 			fmt.Println("There was an error parsing the timestamps in the nodes!")
 			panic(err)
@@ -155,6 +156,14 @@ func findAllPackagesBetweenTwoTimestamps(idToNodeInfo map[int64]g.NodeInfo) *[]g
 	}
 
 	return &nodesInInterval
+
+}
+
+func findAllDepedenciesOfAPackageBetweenTwoTimestamps(graph *simple.DirectedGraph, nodeMap map[int64]g.NodeInfo) {
+	beginTime := generateAndRunDatePrompt("Please input the beginning date of the interval (DD-MM-YYYY)")
+	endTime := generateAndRunDatePrompt("Please input the end date of the interval (DD-MM-YYYY)")
+
+	g.FilterGraph(graph, nodeMap, beginTime, endTime)
 
 }
 
@@ -189,6 +198,19 @@ func generateAndRunDatePrompt(label string) time.Time {
 	time, _ := time.Parse("02-01-2006", timeString)
 	return time
 
+}
+
+func generateAndRunPackageNamePrompt(label string) string {
+
+	packagePrompt := promptui.Prompt{
+		Label:    label,
+		Validate: nil,
+	}
+	packageId, err := packagePrompt.Run()
+	if err != nil {
+		panic(err)
+	}
+	return packageId
 }
 
 func init() {
