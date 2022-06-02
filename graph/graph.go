@@ -47,7 +47,7 @@ func NewNodeInfo(id int64, name string, version string, timestamp string) *NodeI
 // CreateStringIDToNodeInfoMap takes a list of PackageInfo and a simple.DirectedGraph. For each of the packages,
 // it creates a mapping of stringIDs to NodeInfo and also adds a node to the graph. The handling of the IDs is delegated
 // to Gonum. These IDs are also included in the mapping for ease of access.
-func CreateStringIDToNodeInfoMap(packagesInfo *[]PackageInfo, graph *simple.DirectedGraph, idToNodeInfo map[int64]NodeInfo) map[string]NodeInfo {
+func CreateStringIDToNodeInfoMap(packagesInfo *[]PackageInfo, graph *simple.DirectedGraph) map[string]NodeInfo {
 	stringIDToNodeInfoMap := make(map[string]NodeInfo, len(*packagesInfo))
 	for _, packageInfo := range *packagesInfo {
 		for packageVersion, versionInfo := range packageInfo.Versions {
@@ -279,15 +279,15 @@ func ParseJSON(inPath string) *[]PackageInfo {
 func CreateGraph(inputPath string, isUsingMaven bool) (*simple.DirectedGraph, *[]PackageInfo, map[string]NodeInfo, map[int64]NodeInfo, map[string][]string) {
 	packagesList := ParseJSON(inputPath)
 	graph := simple.NewDirectedGraph()
-	idToNodeInfo := make(map[int64]NodeInfo, len(*packagesList))
-	stringIDToNodeInfo := CreateStringIDToNodeInfoMap(packagesList, graph, idToNodeInfo)
+	stringIDToNodeInfo := CreateStringIDToNodeInfoMap(packagesList, graph)
+	idToNodeInfo := CreateNodeIdToPackageMap(stringIDToNodeInfo)
 	nameToVersions := CreateNameToVersionMap(packagesList)
 	CreateEdges(graph, packagesList, stringIDToNodeInfo, nameToVersions, isUsingMaven)
 	return graph, packagesList, stringIDToNodeInfo, idToNodeInfo, nameToVersions
 }
 
 // This function returns true when time t lies in the interval [begin, end], false otherwise
-func inInterval(t, begin, end time.Time) bool {
+func InInterval(t, begin, end time.Time) bool {
 	return t.Equal(begin) || t.Equal(end) || t.After(begin) && t.Before(end)
 }
 
@@ -298,7 +298,7 @@ func initializeTraversal(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, co
 		n := nodes.Node()
 		id := n.ID()
 		publishTime, _ := time.Parse(time.RFC3339, nodeMap[id].Timestamp)
-		if inInterval(publishTime, beginTime, endTime) {
+		if InInterval(publishTime, beginTime, endTime) {
 			withinInterval[id] = true
 		}
 	}
