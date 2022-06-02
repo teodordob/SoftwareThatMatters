@@ -3,14 +3,15 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	g "github.com/AJMBrands/SoftwareThatMatters/graph"
-	"github.com/manifoldco/promptui"
-	"github.com/spf13/cobra"
-	"gonum.org/v1/gonum/graph/simple"
 	"os"
 	"regexp"
 	"strings"
 	"time"
+
+	g "github.com/AJMBrands/SoftwareThatMatters/graph"
+	"github.com/manifoldco/promptui"
+	"github.com/spf13/cobra"
+	"gonum.org/v1/gonum/graph/simple"
 )
 
 // startCmd represents the start command
@@ -65,7 +66,7 @@ func start() {
 	fmt.Println("Creating the graph. This make take a while!")
 
 	//graph, packagesList, stringIDToNodeInfo, idToNodeInfo, nameToVersions := g.CreateGraph(path, isUsingMaven)
-	_, _, _, idToNodeInfo, _ := g.CreateGraph(path, isUsingMaven)
+	graph, _, stringIDToNodeInfo, idToNodeInfo, _ := g.CreateGraph(path, isUsingMaven)
 	// TODO: remove this when we use the actual variables. It is here to get rid of the unused variables warning
 	//_, _, _, _, _ = g.CreateGraph(path, isUsingMaven)
 
@@ -96,6 +97,11 @@ func start() {
 			}
 		case 1:
 			fmt.Println("This should find all the possible dependencies of a package")
+			name := generateAndRunPackageNamePrompt("Please input the package name")
+			nodes := g.GetTransitiveDependenciesNode(graph, idToNodeInfo, stringIDToNodeInfo, name)
+			for _, node := range *nodes {
+				fmt.Println(node)
+			}
 
 		case 2:
 			fmt.Println("This should find all the possible dependencies of a package between two timestamps")
