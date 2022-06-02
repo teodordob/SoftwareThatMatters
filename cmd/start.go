@@ -175,7 +175,7 @@ func findAllPackagesBetweenTwoTimestamps(idToNodeInfo map[int64]g.NodeInfo) *[]g
 func findAllDependenciesOfAPackageBetweenTwoTimestamps(graph *simple.DirectedGraph, nodeMap map[int64]g.NodeInfo, stringIDToNodeInfo map[string]g.NodeInfo) *[]g.NodeInfo {
 	beginTime := generateAndRunDatePrompt("Please input the beginning date of the interval (DD-MM-YYYY)")
 	endTime := generateAndRunDatePrompt("Please input the end date of the interval (DD-MM-YYYY)")
-	nodeStringId := generateAndRunPackageNamePrompt("Please input the name and the version of the package (name-version)", stringIDToNodeInfo)
+	nodeStringId := generateAndRunPackageNamePrompt("Please select the name and the version of the package", stringIDToNodeInfo)
 	g.FilterGraph(graph, nodeMap, beginTime, endTime)
 	return g.GetTransitiveDependenciesNode(graph, nodeMap, stringIDToNodeInfo, nodeStringId)
 }
@@ -218,27 +218,20 @@ func generateAndRunDatePrompt(message string) time.Time {
 }
 
 func generateAndRunPackageNamePrompt(message string, stringIDToNodeInfo map[string]g.NodeInfo) string {
-	validateString := func(input interface{}) error {
-		str, ok := input.(string)
-		if !ok {
-			return errors.New("input is not a string")
-		}
-		if len(str) == 0 {
-			return errors.New("input cannot be empty")
-		}
-		if _, ok := stringIDToNodeInfo[str]; ok {
-			return nil
-		} else {
-			return errors.New("String id was not found \n")
-
-		}
+	keys := make([]string, 0, len(stringIDToNodeInfo))
+	for key := range stringIDToNodeInfo {
+		keys = append(keys, key)
 	}
-	
-	packagePrompt := &survey.Input{
+	packagePrompt := &survey.Select{
 		Message: message,
+		Options: keys,
 	}
+
+	//packagePrompt := &survey.Input{
+	//	Message: message,
+	//}
 	packageID := ""
-	err := survey.AskOne(packagePrompt, &packageID, survey.WithValidator(validateString))
+	err := survey.AskOne(packagePrompt, &packageID)
 
 	if err != nil {
 		panic(err)
