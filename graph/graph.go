@@ -363,13 +363,25 @@ func FilterGraph(graph *simple.DirectedGraph, nodeMap map[int64]NodeInfo, beginT
 
 }
 
-func FilterNode(graph *simple.DirectedGraph, nodeMap map[int64]NodeInfo, stringMap map[string]NodeInfo, stringId string, beginTime, endTime time.Time) {
+func findNode(stringMap map[string]NodeInfo, stringId string) (int64, bool) {
 	var nodeId int64
-
+	var ok bool
 	if info, ok := stringMap[stringId]; ok {
 		nodeId = info.id
+		ok = true
 	} else {
 		log.Printf("String id %s was not found \n", stringId)
+		ok = false
+	}
+	return nodeId, ok
+}
+
+func FilterNode(graph *simple.DirectedGraph, nodeMap map[int64]NodeInfo, stringMap map[string]NodeInfo, stringId string, beginTime, endTime time.Time) {
+
+	var nodeId int64
+	if id, ok := findNode(stringMap, stringId); ok {
+		nodeId = id
+	} else {
 		return // This function is a no-op if we don't have a correct string id
 	}
 
@@ -381,4 +393,24 @@ func FilterNode(graph *simple.DirectedGraph, nodeMap map[int64]NodeInfo, stringM
 	initializeTraversal(graph, nodeMap, disconnected, withinInterval, beginTime, endTime, w) // Initialize all auxillary data structures for the traversal
 
 	traverseOneNode(graph, nodeId, withinInterval, w, disconnected)
+}
+
+// This function returns the specified node and its dependencies
+func ShowTransitiveDependenciesNode(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, stringMap map[string]NodeInfo, stringId string) *[]NodeInfo {
+	var nodeId int64
+	result := make([]NodeInfo, 0, len(nodeMap)/2)
+	if id, ok := findNode(stringMap, stringId); ok {
+		nodeId = id
+	} else {
+		return &result // This function is a no-op if we don't have a correct string id
+	}
+
+	w := traverse.DepthFirst{
+		Visit: func(n graph.Node) {
+			result = append(result, nodeMap[n.ID()])
+		},
+	}
+
+	_ = w.Walk(g, g.Node(nodeId), nil)
+	return &result
 }
