@@ -354,9 +354,10 @@ func traverseOneNode(g *simple.DirectedGraph, nodeId int64, withinInterval map[i
 	for edges.Next() {
 		edge := edges.Edge()
 		for _, disconnectedEdge := range connected {
-			if edge == *disconnectedEdge {
-				g.RemoveEdge(edge.From().ID(), edge.To().ID())
+			if edge == *disconnectedEdge { // Found that it's connected, move on
 				break
+			} else {
+				g.RemoveEdge(edge.From().ID(), edge.To().ID())
 			}
 		}
 	}
