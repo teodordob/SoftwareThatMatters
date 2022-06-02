@@ -322,6 +322,20 @@ func initializeTraversal(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, co
 	}
 }
 
+func removeDisconnected(g *simple.DirectedGraph, connected []*graph.Edge) {
+	edges := g.Edges()
+	for edges.Next() {
+		edge := edges.Edge()
+		for _, disconnectedEdge := range connected { // Found that it's connected, move on
+			if edge == *disconnectedEdge {
+				break
+			} else {
+				g.RemoveEdge(edge.From().ID(), edge.To().ID())
+			}
+		}
+	}
+}
+
 // This function removes stale edges from the specified graph by doing a DFS with all packages as the root node in O(n^2)
 func traverseAndRemoveEdges(g *simple.DirectedGraph, withinInterval map[int64]bool, w traverse.DepthFirst, connected []*graph.Edge) {
 	nodes := g.Nodes()
@@ -333,34 +347,13 @@ func traverseAndRemoveEdges(g *simple.DirectedGraph, withinInterval map[int64]bo
 		}
 	}
 
-	edges := g.Edges()
-	for edges.Next() {
-		edge := edges.Edge()
-		for _, disconnectedEdge := range connected {
-			if edge == *disconnectedEdge { // Found that it's connected, move on
-				break
-			} else {
-				g.RemoveEdge(edge.From().ID(), edge.To().ID())
-			}
-		}
-	}
+	removeDisconnected(g, connected)
 
 }
 
 func traverseOneNode(g *simple.DirectedGraph, nodeId int64, withinInterval map[int64]bool, w traverse.DepthFirst, connected []*graph.Edge) {
 	_ = w.Walk(g, g.Node(nodeId), nil)
-
-	edges := g.Edges()
-	for edges.Next() {
-		edge := edges.Edge()
-		for _, disconnectedEdge := range connected {
-			if edge == *disconnectedEdge { // Found that it's connected, move on
-				break
-			} else {
-				g.RemoveEdge(edge.From().ID(), edge.To().ID())
-			}
-		}
-	}
+	removeDisconnected(g, connected)
 }
 
 func FilterGraph(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, beginTime, endTime time.Time) {
