@@ -34,11 +34,6 @@ type NodeInfo struct {
 	Timestamp string
 }
 
-type EdgePair struct {
-	From int64
-	To   int64
-}
-
 // NewNodeInfo constructs a NodeInfo structure and automatically fills the stringID.
 func NewNodeInfo(id int64, name string, version string, timestamp string) *NodeInfo {
 	return &NodeInfo{
@@ -297,7 +292,7 @@ func inInterval(t, begin, end time.Time) bool {
 }
 
 // This is a helper function used to initialize all required auxillary data structures for the graph traversal
-func initializeTraversal(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, disconnected []EdgePair, withinInterval map[int64]bool, beginTime time.Time, endTime time.Time, w traverse.DepthFirst) {
+func initializeTraversal(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, connected []*graph.Edge, withinInterval map[int64]bool, beginTime time.Time, endTime time.Time, w traverse.DepthFirst) {
 	nodes := g.Nodes()
 	for nodes.Next() { // Initialize withinInterval data structure
 		n := nodes.Node()
@@ -317,9 +312,9 @@ func initializeTraversal(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, di
 			if withinInterval[toId] {
 				fromTime, _ := time.Parse(time.RFC3339, nodeMap[fromId].Timestamp) // The dependent node's time stamp
 				toTime, _ := time.Parse(time.RFC3339, nodeMap[toId].Timestamp)     // The dependency node's time stamp
-				if traverse = fromTime.After(toTime); !traverse {
-					disconnected = append(disconnected, EdgePair{From: fromId, To: toId})
-				} // If the dependency wasn't released before the parent node, add this edge to the disconnected nodes
+				if traverse = fromTime.After(toTime); traverse {
+					connected = append(connected, &e)
+				} // If the dependency was released before the parent node, add this edge to the connected nodes
 			}
 
 			return traverse
@@ -328,7 +323,7 @@ func initializeTraversal(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, di
 }
 
 // This function removes stale edges from the specified graph by doing a DFS with all packages as the root node in O(n^2)
-func traverseAndRemoveEdges(g *simple.DirectedGraph, withinInterval map[int64]bool, w traverse.DepthFirst, disconnected []EdgePair) {
+func traverseAndRemoveEdges(g *simple.DirectedGraph, withinInterval map[int64]bool, w traverse.DepthFirst, connected []*graph.Edge) {
 	nodes := g.Nodes()
 	for nodes.Next() {
 		n := nodes.Node()
@@ -338,28 +333,44 @@ func traverseAndRemoveEdges(g *simple.DirectedGraph, withinInterval map[int64]bo
 		}
 	}
 
-	for _, edge := range disconnected {
-		g.RemoveEdge(edge.From, edge.To) // Leaves unconnected nodes free-floating; ignores non-existent edges
+	edges := g.Edges()
+	for edges.Next() {
+		edge := edges.Edge()
+		for _, disconnectedEdge := range connected {
+			if edge == *disconnectedEdge { // Found that it's connected, move on
+				break
+			} else {
+				g.RemoveEdge(edge.From().ID(), edge.To().ID())
+			}
+		}
 	}
+
 }
 
-func traverseOneNode(g *simple.DirectedGraph, nodeId int64, withinInterval map[int64]bool, w traverse.DepthFirst, disconnected []EdgePair) {
+func traverseOneNode(g *simple.DirectedGraph, nodeId int64, withinInterval map[int64]bool, w traverse.DepthFirst, connected []*graph.Edge) {
 	_ = w.Walk(g, g.Node(nodeId), nil)
 
-	for _, edge := range disconnected {
-		g.RemoveEdge(edge.From, edge.To) // Leaves unconnected nodes free-floating; ignores non-existent edges
+	edges := g.Edges()
+	for edges.Next() {
+		edge := edges.Edge()
+		for _, disconnectedEdge := range connected {
+			if edge == *disconnectedEdge {
+				g.RemoveEdge(edge.From().ID(), edge.To().ID())
+				break
+			}
+		}
 	}
 }
 
-func FilterGraph(graph *simple.DirectedGraph, nodeMap map[int64]NodeInfo, beginTime, endTime time.Time) {
+func FilterGraph(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, beginTime, endTime time.Time) {
 	// This stores whether the package existed in the specified time range
 	withinInterval := make(map[int64]bool, len(nodeMap))
-	// This keeps track of which edges we've disconnected
-	disconnected := make([]EdgePair, 0, len(nodeMap)*2)
+	// This keeps track of which edges we've connected
+	connected := make([]*graph.Edge, 0, len(nodeMap)*2)
 	var w traverse.DepthFirst
-	initializeTraversal(graph, nodeMap, disconnected, withinInterval, beginTime, endTime, w) // Initialize all auxillary data structures for the traversal
+	initializeTraversal(g, nodeMap, connected, withinInterval, beginTime, endTime, w) // Initialize all auxillary data structures for the traversal
 
-	traverseAndRemoveEdges(graph, withinInterval, w, disconnected) // Traverse the graph and remove stale edges
+	traverseAndRemoveEdges(g, withinInterval, w, connected) // Traverse the graph and remove stale edges
 
 }
 
@@ -376,7 +387,7 @@ func findNode(stringMap map[string]NodeInfo, stringId string) (int64, bool) {
 	return nodeId, ok
 }
 
-func FilterNode(graph *simple.DirectedGraph, nodeMap map[int64]NodeInfo, stringMap map[string]NodeInfo, stringId string, beginTime, endTime time.Time) {
+func FilterNode(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, stringMap map[string]NodeInfo, stringId string, beginTime, endTime time.Time) {
 
 	var nodeId int64
 	if id, ok := findNode(stringMap, stringId); ok {
@@ -387,12 +398,12 @@ func FilterNode(graph *simple.DirectedGraph, nodeMap map[int64]NodeInfo, stringM
 
 	// This stores whether the package existed in the specified time range
 	withinInterval := make(map[int64]bool, len(nodeMap))
-	// This keeps track of which edges we've disconnected
-	disconnected := make([]EdgePair, 0, len(nodeMap)*2)
+	// This keeps track of which edges we've connected
+	connected := make([]*graph.Edge, 0, len(nodeMap)*2)
 	var w traverse.DepthFirst
-	initializeTraversal(graph, nodeMap, disconnected, withinInterval, beginTime, endTime, w) // Initialize all auxillary data structures for the traversal
+	initializeTraversal(g, nodeMap, connected, withinInterval, beginTime, endTime, w) // Initialize all auxillary data structures for the traversal
 
-	traverseOneNode(graph, nodeId, withinInterval, w, disconnected)
+	traverseOneNode(g, nodeId, withinInterval, w, connected)
 }
 
 // This function returns the specified node and its dependencies
