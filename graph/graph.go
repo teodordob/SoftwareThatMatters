@@ -34,6 +34,11 @@ type NodeInfo struct {
 	Timestamp string
 }
 
+type EdgePair struct {
+	From int64
+	To   int64
+}
+
 // NewNodeInfo constructs a NodeInfo structure and automatically fills the stringID.
 func NewNodeInfo(id int64, name string, version string, timestamp string) *NodeInfo {
 	return &NodeInfo{
@@ -345,14 +350,39 @@ func traverseAndRemoveEdges(g *simple.DirectedGraph, withinInterval map[int64]bo
 	}
 }
 
+func traverseOneNode(g *simple.DirectedGraph, nodeId int64, withinInterval map[int64]bool, w traverse.DepthFirst, traversed [][]bool) {
+	_ = w.Walk(g, g.Node(nodeId), nil)
+
+	for from := range traversed {
+		for to, val := range traversed[from] {
+			if !val {
+				g.RemoveEdge(int64(from), int64(to))
+			}
+		}
+	}
+}
+
 func FilterGraph(graph *simple.DirectedGraph, nodeMap map[int64]NodeInfo, beginTime, endTime time.Time) {
 	// This stores whether the package existed in the specified time range
 	withinInterval := make(map[int64]bool, len(nodeMap))
 	// This keeps track of which edges we've visited
 	traversed := make([][]bool, len(nodeMap))
+	_ = make([]EdgePair, 0, len(nodeMap)/2) // Preparation for visited edge "set"
 	var w traverse.DepthFirst
 	initializeTraversal(graph, nodeMap, traversed, withinInterval, beginTime, endTime, w) // Initialize all auxillary data structures for the traversal
 
 	traverseAndRemoveEdges(graph, withinInterval, w, traversed) // Traverse the graph and remove stale edges
 
+}
+
+func FilterNode(graph *simple.DirectedGraph, nodeMap map[int64]NodeInfo, nodeId int64, beginTime, endTime time.Time) {
+	// This stores whether the package existed in the specified time range
+	withinInterval := make(map[int64]bool, len(nodeMap))
+	// This keeps track of which edges we've visited
+	traversed := make([][]bool, len(nodeMap))
+	_ = make([]EdgePair, 0, len(nodeMap)/2) // Preparation for visited edge "set"
+	var w traverse.DepthFirst
+	initializeTraversal(graph, nodeMap, traversed, withinInterval, beginTime, endTime, w) // Initialize all auxillary data structures for the traversal
+
+	traverseOneNode(graph, nodeId, withinInterval, w, traversed)
 }
