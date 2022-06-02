@@ -644,6 +644,6 @@ MigrationBackup/
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
 .idea*
-
+.idea
 /data/
 # End of https://www.toptal.com/developers/gitignore/api/python,go,vs,intellij

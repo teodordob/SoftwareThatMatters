@@ -31,9 +31,9 @@ func TestNodeCreationBasicGraph(t *testing.T) {
 			},
 		},
 	}
-	dummyMap := make(map[int64]NodeInfo)
+	//dummyMap := make(map[int64]NodeInfo)
 	graph := simple.NewDirectedGraph()
-	stringMap := CreateStringIDToNodeInfoMap(&simplePackageInfo, graph, dummyMap)
+	stringMap := CreateStringIDToNodeInfoMap(&simplePackageInfo, graph)
 	nameVersion := CreateNameToVersionMap(&simplePackageInfo)
 	CreateEdges(graph, &simplePackageInfo, stringMap, nameVersion, false)
 
@@ -128,9 +128,9 @@ func TestNodeCreationMediumComplexity(t *testing.T) {
 		packageA,
 	}
 
-	dummyMap := make(map[int64]NodeInfo)
+	//dummyMap := make(map[int64]NodeInfo)
 	graph := simple.NewDirectedGraph()
-	stringNodeInfo := CreateStringIDToNodeInfoMap(&mediumPackageInfo, graph, dummyMap)
+	stringNodeInfo := CreateStringIDToNodeInfoMap(&mediumPackageInfo, graph)
 	nameVersion := CreateNameToVersionMap(&mediumPackageInfo)
 	CreateEdges(graph, &mediumPackageInfo, stringNodeInfo, nameVersion, false)
 
@@ -219,9 +219,9 @@ func TestCreateEdgesBasicGraph(t *testing.T) {
 			},
 		},
 	}
-	dummyMap := make(map[int64]NodeInfo)
+	//dummyMap := make(map[int64]NodeInfo)
 	graph := simple.NewDirectedGraph()
-	stringIDToNodeInfo := CreateStringIDToNodeInfoMap(&simplePackagesInfo, graph, dummyMap)
+	stringIDToNodeInfo := CreateStringIDToNodeInfoMap(&simplePackagesInfo, graph)
 	nameToVersions := CreateNameToVersionMap(&simplePackagesInfo)
 	CreateEdges(graph, &simplePackagesInfo, stringIDToNodeInfo, nameToVersions, false)
 
@@ -292,19 +292,19 @@ func TestCreateEdgesMediumComplexityGraph(t *testing.T) {
 			},
 		},
 	}
-	dummyMap := make(map[int64]NodeInfo)
+	//dummyMap := make(map[int64]NodeInfo)
 	graph := simple.NewDirectedGraph()
-	stringIDToNodeInfo := CreateStringIDToNodeInfoMap(&packagesInfo, graph, dummyMap)
+	stringIDToNodeInfo := CreateStringIDToNodeInfoMap(&packagesInfo, graph)
 	nameToVersions := CreateNameToVersionMap(&packagesInfo)
 	CreateEdges(graph, &packagesInfo, stringIDToNodeInfo, nameToVersions, false)
-	t.Run("Creates 6 edges when there are 6 possible dependencies", func(t *testing.T) {
-		if graph.Edges().Len() != 6 {
-			t.Errorf("Expected 6 edges, got %d", graph.Edges().Len())
+	t.Run("Creates 4 edges when there are 4 possible dependencies", func(t *testing.T) {
+		if graph.Edges().Len() != 4 {
+			t.Errorf("Expected 4 edges, got %d", graph.Edges().Len())
 		}
 	})
 	t.Run("Creates edges to the correct dependencies for Node B-1.0.0", func(t *testing.T) {
-		if graph.From(stringIDToNodeInfo["B-1.0.0"].id).Len() != 4 {
-			t.Errorf("Expected 4 possible dependencies for Node B-1.0.0, got %d", graph.From(stringIDToNodeInfo["B-1.0.0"].id).Len())
+		if graph.From(stringIDToNodeInfo["B-1.0.0"].id).Len() != 3 {
+			t.Errorf("Expected 3 possible dependencies for Node B-1.0.0, got %d", graph.From(stringIDToNodeInfo["B-1.0.0"].id).Len())
 		}
 		nodesIterator := graph.From(stringIDToNodeInfo["B-1.0.0"].id)
 		counter := 0
