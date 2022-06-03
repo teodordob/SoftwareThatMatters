@@ -158,12 +158,21 @@ func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, stringID
 				}
 				for _, v := range nameToVersionMap[dependencyName] {
 					//newVersion, _ := semver2.Parse(v)
-					newVersion, _ := semver.NewVersion(v)
+					newVersion, err := semver.NewVersion(v)
+					if err != nil {
+						//fmt.Println(v)
+						//panic(err)
+						continue
+					}
 					if constraint.Check(newVersion) {
 						dependencyNameVersionString := fmt.Sprintf("%s-%s", dependencyName, v)
 						dependencyNode := graph.Node(stringIDToNodeInfo[dependencyNameVersionString].id)
 						packageNode := graph.Node(int64(id))
-						graph.SetEdge(simple.Edge{F: packageNode, T: dependencyNode})
+						// Ensure that we do not create edges to self because some packages do that...
+						if dependencyNode != packageNode {
+							graph.SetEdge(simple.Edge{F: packageNode, T: dependencyNode})
+						}
+
 					}
 				}
 			}
