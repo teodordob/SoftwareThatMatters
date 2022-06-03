@@ -150,16 +150,29 @@ func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, stringID
 				constraint, err := semver.NewConstraint(finaldep)
 				//c, err := semver2.ParseRange(dependencyVersion)
 				if err != nil {
-					log.Fatal(err)
+					continue
+					//fmt.Println("sunt aici")
+					//fmt.Println(finaldep)
+					////log.Fatal(finaldep)
+					//log.Fatal(err)
 				}
 				for _, v := range nameToVersionMap[dependencyName] {
 					//newVersion, _ := semver2.Parse(v)
-					newVersion, _ := semver.NewVersion(v)
+					newVersion, err := semver.NewVersion(v)
+					if err != nil {
+						//fmt.Println(v)
+						//panic(err)
+						continue
+					}
 					if constraint.Check(newVersion) {
 						dependencyNameVersionString := fmt.Sprintf("%s-%s", dependencyName, v)
 						dependencyNode := graph.Node(stringIDToNodeInfo[dependencyNameVersionString].id)
 						packageNode := graph.Node(int64(id))
-						graph.SetEdge(simple.Edge{F: packageNode, T: dependencyNode})
+						// Ensure that we do not create edges to self because some packages do that...
+						if dependencyNode != packageNode {
+							graph.SetEdge(simple.Edge{F: packageNode, T: dependencyNode})
+						}
+
 					}
 				}
 			}
@@ -374,15 +387,15 @@ func FilterGraph(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, beginTime,
 
 func findNode(stringMap map[string]NodeInfo, stringId string) (int64, bool) {
 	var nodeId int64
-	var ok bool
+	var correctOk bool
 	if info, ok := stringMap[stringId]; ok {
 		nodeId = info.id
-		ok = true
+		correctOk = true
 	} else {
 		log.Printf("String id %s was not found \n", stringId)
-		ok = false
+		correctOk = false
 	}
-	return nodeId, ok
+	return nodeId, correctOk
 }
 
 func FilterNode(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, stringMap map[string]NodeInfo, stringId string, beginTime, endTime time.Time) {
