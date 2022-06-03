@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"runtime"
 	"time"
 
 	"github.com/Masterminds/semver"
@@ -293,14 +294,16 @@ func ParseJSON(inPath string) *[]PackageInfo {
 	return &result
 }
 
-func CreateGraph(inputPath string, isUsingMaven bool) (*simple.DirectedGraph, *[]PackageInfo, map[string]NodeInfo, map[int64]NodeInfo, map[string][]string) {
+func CreateGraph(inputPath string, isUsingMaven bool) (*simple.DirectedGraph, map[string]NodeInfo, map[int64]NodeInfo, map[string][]string) {
 	packagesList := ParseJSON(inputPath)
 	graph := simple.NewDirectedGraph()
 	stringIDToNodeInfo := CreateStringIDToNodeInfoMap(packagesList, graph)
 	idToNodeInfo := CreateNodeIdToPackageMap(stringIDToNodeInfo)
 	nameToVersions := CreateNameToVersionMap(packagesList)
 	CreateEdges(graph, packagesList, stringIDToNodeInfo, nameToVersions, isUsingMaven)
-	return graph, packagesList, stringIDToNodeInfo, idToNodeInfo, nameToVersions
+	// TODO: This might cause some issues but for now it saves it quite a lot of memory
+	runtime.GC()
+	return graph, stringIDToNodeInfo, idToNodeInfo, nameToVersions
 }
 
 // This function returns true when time t lies in the interval [begin, end], false otherwise
