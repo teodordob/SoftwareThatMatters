@@ -428,10 +428,10 @@ func FilterGraph(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, beginTime,
 
 }
 
-func findNode(stringMap map[string]NodeInfo, stringId string) (int64, bool) {
+func findNode(hashMap map[uint64]int64, idToNodeInfo map[int64]NodeInfo, stringId string) (int64, bool) {
 	var nodeId int64
 	var correctOk bool
-	if info, ok := stringMap[stringId]; ok {
+	if info, ok := idToNodeInfo[LookupByStringId(stringId, hashMap)]; ok {
 		nodeId = info.id
 		correctOk = true
 	} else {
@@ -441,10 +441,10 @@ func findNode(stringMap map[string]NodeInfo, stringId string) (int64, bool) {
 	return nodeId, correctOk
 }
 
-func FilterNode(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, stringMap map[string]NodeInfo, stringId string, beginTime, endTime time.Time) {
+func FilterNode(g *simple.DirectedGraph, hashMap map[uint64]int64, nodeMap map[int64]NodeInfo, stringId string, beginTime, endTime time.Time) {
 
 	var nodeId int64
-	if id, ok := findNode(stringMap, stringId); ok {
+	if id, ok := findNode(hashMap, nodeMap, stringId); ok {
 		nodeId = id
 	} else {
 		return // This function is a no-op if we don't have a correct string id
@@ -461,10 +461,10 @@ func FilterNode(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, stringMap m
 }
 
 // This function returns the specified node and its dependencies
-func GetTransitiveDependenciesNode(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, stringMap map[string]NodeInfo, stringId string) *[]NodeInfo {
+func GetTransitiveDependenciesNode(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, hashMap map[uint64]int64, stringId string) *[]NodeInfo {
 	var nodeId int64
 	result := make([]NodeInfo, 0, len(nodeMap)/2)
-	if id, ok := findNode(stringMap, stringId); ok {
+	if id, ok := findNode(hashMap, nodeMap, stringId); ok {
 		nodeId = id
 	} else {
 		return &result // This function is a no-op if we don't have a correct string id
