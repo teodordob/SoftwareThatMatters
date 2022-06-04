@@ -144,8 +144,8 @@ func VisualizationNodeInfo(iDToNodeInfo *map[string]NodeInfo, graph *simple.Dire
 // TODO: Discuss removing pointers from maps since they are reference types without the need of using * : https://stackoverflow.com/questions/40680981/are-maps-passed-by-value-or-by-reference-in-go
 func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, hashToNodeId map[uint64]int64, nodeInfoMap map[int64]NodeInfo, nameToVersionMap map[string][]string, isMaven bool) {
 	r, _ := regexp.Compile("((?P<open>[\\(\\[])(?P<bothVer>((?P<firstVer>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)(?P<comma1>,)(?P<secondVer1>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?)|((?P<comma2>,)?(?P<secondVer2>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?))(?P<close>[\\)\\]]))|(?P<simplevers>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)")
-	for id, packageInfo := range *inputList {
-		for _, dependencyInfo := range packageInfo.Versions {
+	for _, packageInfo := range *inputList {
+		for version, dependencyInfo := range packageInfo.Versions {
 			for dependencyName, dependencyVersion := range dependencyInfo.Dependencies {
 				finaldep := dependencyVersion
 				if isMaven {
@@ -169,10 +169,13 @@ func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, hashToNo
 						continue
 					}
 					if constraint.Check(newVersion) {
-						stringId := fmt.Sprintf("%s-%s", dependencyName, v)
-						goId := hashToNodeId[hashStringId(stringId)]
-						dependencyNode := graph.Node(goId)
-						packageNode := graph.Node(int64(id)) // This is incorrect, because we're just pulling this id out of thin air
+						dependencyStringId := fmt.Sprintf("%s-%s", dependencyName, v)
+						dependencyGoId := LookupByStringId(dependencyStringId, hashToNodeId)
+						dependencyNode := graph.Node(dependencyGoId)
+
+						packageStringId := fmt.Sprintf("%s-%s", packageInfo.Name, version)
+						packageGoId := LookupByStringId(packageStringId, hashToNodeId)
+						packageNode := graph.Node(packageGoId)
 						// Ensure that we do not create edges to self because some packages do that...
 						if dependencyNode != packageNode {
 							graph.SetEdge(simple.Edge{F: packageNode, T: dependencyNode})
@@ -324,11 +327,10 @@ func hashStringId(stringID string) uint64 {
 	return hashed
 }
 
-func LookupByStringId(stringId string, hashTable map[uint64]int64, nodeMap map[int64]NodeInfo) *NodeInfo {
+func LookupByStringId(stringId string, hashTable map[uint64]int64) int64 {
 	hash := hashStringId(stringId)
 	goId := hashTable[hash]
-	info := nodeMap[goId]
-	return &info
+	return goId
 }
 
 func CreateGraph(inputPath string, isUsingMaven bool) (*simple.DirectedGraph, map[uint64]int64, map[int64]NodeInfo, map[string][]string) {
