@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/sha1"
 	"encoding/binary"
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -13,6 +12,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver"
+	"github.com/mailru/easyjson"
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/encoding/dot"
 	"gonum.org/v1/gonum/graph/simple"
@@ -27,6 +27,10 @@ type VersionInfo struct {
 type PackageInfo struct {
 	Name     string                 `json:"name"`
 	Versions map[string]VersionInfo `json:"versions"`
+}
+
+type Doc struct {
+	Pkgs []PackageInfo `json:"pkgs"`
 }
 
 // NodeInfo is a type structure for nodes. Name and Version can be removed if we find we don't use them often enough
@@ -268,37 +272,22 @@ func translateMavenSemver(s string, reg *regexp.Regexp) string {
 
 }
 
-func ParseJSON(inPath string) *[]PackageInfo {
-	// For NPM at least, about 2 million packages are expected, so we initialize so the array doesn't have to be re-allocated all the time
-	const expectedAmount int = 2000000
-	// An array for now since lists aren't type-safe, and they would overcomplicate things
-	result := make([]PackageInfo, 0, expectedAmount)
+func ParseJSON(inPath string) []PackageInfo {
+
 	f, err := os.Open(inPath)
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer f.Close()
 
-	dec := json.NewDecoder(f)
-
-	//Read opening bracket
-	if _, err := dec.Token(); err != nil {
-		log.Fatal(err)
+	var result Doc
+	err = easyjson.UnmarshalFromReader(f, &result)
+	if err != nil {
+		panic(err)
 	}
+	fmt.Printf("Read %d packages\n", len(result.Pkgs))
 
-	for dec.More() {
-		var packageInfo PackageInfo
-
-		if err := dec.Decode(&packageInfo); err != nil {
-			log.Fatal(err)
-		}
-		result = append(result, packageInfo)
-	}
-
-	//Read closing bracket
-	if _, err := dec.Token(); err != nil {
-		log.Fatal(err)
-	}
-	return &result
+	return result.Pkgs
 }
 
 func CreateMaps(packageList *[]PackageInfo, graph *simple.DirectedGraph) (map[uint64]int64, map[int64]NodeInfo) {
@@ -338,9 +327,9 @@ func CreateGraph(inputPath string, isUsingMaven bool) (*simple.DirectedGraph, ma
 	graph := simple.NewDirectedGraph()
 	// stringIDToNodeInfo := CreateStringIDToNodeInfoMap(packagesList, graph)
 	// idToNodeInfo := CreateNodeIdToPackageMap(stringIDToNodeInfo)
-	hashToNodeId, idToNodeInfo := CreateMaps(packagesList, graph)
-	nameToVersions := CreateNameToVersionMap(packagesList)
-	CreateEdges(graph, packagesList, hashToNodeId, idToNodeInfo, nameToVersions, isUsingMaven)
+	hashToNodeId, idToNodeInfo := CreateMaps(&packagesList, graph)
+	nameToVersions := CreateNameToVersionMap(&packagesList)
+	CreateEdges(graph, &packagesList, hashToNodeId, idToNodeInfo, nameToVersions, isUsingMaven)
 	// TODO: This might cause some issues but for now it saves it quite a lot of memory
 	runtime.GC()
 	return graph, hashToNodeId, idToNodeInfo, nameToVersions
