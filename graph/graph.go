@@ -1,6 +1,9 @@
 package graph
 
 import (
+	"bytes"
+	"crypto/sha1"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -292,6 +295,32 @@ func ParseJSON(inPath string) *[]PackageInfo {
 		log.Fatal(err)
 	}
 	return &result
+}
+
+func CreateHashToGoId(packageList *[]PackageInfo, graph *simple.DirectedGraph) (map[uint64]int64, map[int64]NodeInfo) {
+	hashToNodeId := make(map[uint64]int64, len(*packageList)*10)
+	idToNodeInfo := make(map[int64]NodeInfo, len(*packageList)*10)
+	for _, packageInfo := range *packageList {
+		for packageVersion, versionInfo := range packageInfo.Versions {
+			stringID := fmt.Sprintf("%s-%s", packageInfo.Name, packageVersion)
+			hashed := hashStringId(stringID)
+			// Delegate the work of creating a unique ID to Gonum
+			newNode := graph.NewNode()
+			newId := newNode.ID()
+			hashToNodeId[hashed] = newId
+			idToNodeInfo[newId] = *NewNodeInfo(newId, packageInfo.Name, packageVersion, versionInfo.Timestamp)
+			graph.AddNode(newNode)
+		}
+	}
+	return hashToNodeId, idToNodeInfo
+}
+
+func hashStringId(stringID string) uint64 {
+	sum := sha1.Sum([]byte(stringID))
+	var hashed uint64
+	buf := bytes.NewBuffer(sum[:])
+	binary.Read(buf, binary.LittleEndian, &hashed)
+	return hashed
 }
 
 func CreateGraph(inputPath string, isUsingMaven bool) (*simple.DirectedGraph, map[string]NodeInfo, map[int64]NodeInfo, map[string][]string) {
