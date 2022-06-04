@@ -142,7 +142,7 @@ func VisualizationNodeInfo(iDToNodeInfo *map[string]NodeInfo, graph *simple.Dire
 // a map of names to versions and creates directed edges between the dependent library and its dependencies.
 // TODO: add documentation on how we use semver for edges
 // TODO: Discuss removing pointers from maps since they are reference types without the need of using * : https://stackoverflow.com/questions/40680981/are-maps-passed-by-value-or-by-reference-in-go
-func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, stringIDToNodeInfo map[string]NodeInfo, nameToVersionMap map[string][]string, isMaven bool) {
+func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, hashToNodeId map[uint64]int64, nodeInfoMap map[int64]NodeInfo, nameToVersionMap map[string][]string, isMaven bool) {
 	r, _ := regexp.Compile("((?P<open>[\\(\\[])(?P<bothVer>((?P<firstVer>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)(?P<comma1>,)(?P<secondVer1>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?)|((?P<comma2>,)?(?P<secondVer2>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?))(?P<close>[\\)\\]]))|(?P<simplevers>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)")
 	for id, packageInfo := range *inputList {
 		for _, dependencyInfo := range packageInfo.Versions {
@@ -169,9 +169,10 @@ func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, stringID
 						continue
 					}
 					if constraint.Check(newVersion) {
-						dependencyNameVersionString := fmt.Sprintf("%s-%s", dependencyName, v)
-						dependencyNode := graph.Node(stringIDToNodeInfo[dependencyNameVersionString].id)
-						packageNode := graph.Node(int64(id))
+						stringId := fmt.Sprintf("%s-%s", dependencyName, v)
+						goId := hashToNodeId[hashStringId(stringId)]
+						dependencyNode := graph.Node(goId)
+						packageNode := graph.Node(int64(id)) // This is incorrect, because we're just pulling this id out of thin air
 						// Ensure that we do not create edges to self because some packages do that...
 						if dependencyNode != packageNode {
 							graph.SetEdge(simple.Edge{F: packageNode, T: dependencyNode})
@@ -297,7 +298,7 @@ func ParseJSON(inPath string) *[]PackageInfo {
 	return &result
 }
 
-func CreateHashToGoId(packageList *[]PackageInfo, graph *simple.DirectedGraph) (map[uint64]int64, map[int64]NodeInfo) {
+func CreateMaps(packageList *[]PackageInfo, graph *simple.DirectedGraph) (map[uint64]int64, map[int64]NodeInfo) {
 	hashToNodeId := make(map[uint64]int64, len(*packageList)*10)
 	idToNodeInfo := make(map[int64]NodeInfo, len(*packageList)*10)
 	for _, packageInfo := range *packageList {
@@ -323,16 +324,24 @@ func hashStringId(stringID string) uint64 {
 	return hashed
 }
 
-func CreateGraph(inputPath string, isUsingMaven bool) (*simple.DirectedGraph, map[string]NodeInfo, map[int64]NodeInfo, map[string][]string) {
+func LookupByStringId(stringId string, hashTable map[uint64]int64, nodeMap map[int64]NodeInfo) *NodeInfo {
+	hash := hashStringId(stringId)
+	goId := hashTable[hash]
+	info := nodeMap[goId]
+	return &info
+}
+
+func CreateGraph(inputPath string, isUsingMaven bool) (*simple.DirectedGraph, map[uint64]int64, map[int64]NodeInfo, map[string][]string) {
 	packagesList := ParseJSON(inputPath)
 	graph := simple.NewDirectedGraph()
-	stringIDToNodeInfo := CreateStringIDToNodeInfoMap(packagesList, graph)
-	idToNodeInfo := CreateNodeIdToPackageMap(stringIDToNodeInfo)
+	// stringIDToNodeInfo := CreateStringIDToNodeInfoMap(packagesList, graph)
+	// idToNodeInfo := CreateNodeIdToPackageMap(stringIDToNodeInfo)
+	hashToNodeId, idToNodeInfo := CreateMaps(packagesList, graph)
 	nameToVersions := CreateNameToVersionMap(packagesList)
-	CreateEdges(graph, packagesList, stringIDToNodeInfo, nameToVersions, isUsingMaven)
+	CreateEdges(graph, packagesList, hashToNodeId, idToNodeInfo, nameToVersions, isUsingMaven)
 	// TODO: This might cause some issues but for now it saves it quite a lot of memory
 	runtime.GC()
-	return graph, stringIDToNodeInfo, idToNodeInfo, nameToVersions
+	return graph, hashToNodeId, idToNodeInfo, nameToVersions
 }
 
 // This function returns true when time t lies in the interval [begin, end], false otherwise
