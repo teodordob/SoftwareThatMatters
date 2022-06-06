@@ -7,6 +7,7 @@ import (
 	"os"
 	"regexp"
 	"runtime"
+	"sync"
 	"time"
 
 	"github.com/Masterminds/semver"
@@ -41,7 +42,9 @@ type NodeInfo struct {
 }
 
 var crcTable *crc64.Table = crc64.MakeTable(crc64.ISO)
+var mvnRegex *regexp.Regexp = regexp.MustCompile("((?P<open>[\\(\\[])(?P<bothVer>((?P<firstVer>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)(?P<comma1>,)(?P<secondVer1>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?)|((?P<comma2>,)?(?P<secondVer2>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?))(?P<close>[\\)\\]]))|(?P<simplevers>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)")
 
+const maxConcurrent = 12 // The max amount of goroutines the CreateEdgesConcurrent function can spawn
 // NewNodeInfo constructs a NodeInfo structure and automatically fills the stringID.
 func NewNodeInfo(id int64, name string, version string, timestamp string) *NodeInfo {
 	return &NodeInfo{
@@ -197,6 +200,67 @@ func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, hashToNo
 	}
 }
 
+func CreateEdgesConcurrent(graph *simple.DirectedGraph, inputList *[]PackageInfo, hashToNodeId map[uint64]int64, nodeInfoMap map[int64]NodeInfo, nameToVersionMap map[string][]string, isMaven bool) {
+	var graphMutex sync.Mutex
+	var wg sync.WaitGroup
+	guard := make(chan uint8, maxConcurrent)
+
+	for _, packageInfo := range *inputList {
+		for version, dependencyInfo := range packageInfo.Versions {
+			for dependencyName, dependencyVersion := range dependencyInfo.Dependencies {
+				wg.Add(1) // Add one goroutine to wait group
+				go func(dependencyVersion string, isMaven bool, nameToVersionMap map[string][]string, dependencyName string, hashToNodeId map[uint64]int64, graph *simple.DirectedGraph, packageName string, packageVersion string) {
+					guard <- 1
+					defer wg.Done()
+					createEdgesForDependency(dependencyVersion, dependencyName, isMaven, nameToVersionMap, hashToNodeId, graph, packageName, packageVersion, &graphMutex)
+					<-guard
+				}(dependencyVersion, isMaven, nameToVersionMap, dependencyName, hashToNodeId, graph, packageInfo.Name, version)
+
+			}
+		}
+	}
+
+	wg.Wait()
+
+}
+
+func createEdgesForDependency(dependencyName string, dependencyVersion string, isMaven bool, nameToVersionMap map[string][]string, hashToNodeId map[uint64]int64, graph *simple.DirectedGraph, packageName string, packageVersion string, graphMutex *sync.Mutex) {
+	finaldep := dependencyVersion
+	if isMaven {
+		finaldep = parseMultipleMavenSemVers(dependencyVersion, mvnRegex)
+	}
+	constraint, err := semver.NewConstraint(finaldep)
+
+	if err != nil {
+		return
+	}
+	for _, v := range nameToVersionMap[dependencyName] {
+
+		newVersion, err := semver.NewVersion(v)
+		if err != nil {
+
+			continue
+		}
+		if constraint.Check(newVersion) {
+
+			dependencyStringId := fmt.Sprintf("%s-%s", dependencyName, v)
+			dependencyGoId := LookupByStringId(dependencyStringId, hashToNodeId)
+			dependencyNode := graph.Node(dependencyGoId)
+
+			packageStringId := fmt.Sprintf("%s-%s", packageName, packageVersion)
+			packageGoId := LookupByStringId(packageStringId, hashToNodeId)
+			packageNode := graph.Node(packageGoId)
+
+			if dependencyNode != packageNode {
+				graphMutex.Lock() // Kindly ask if we can use the graph yet
+				graph.SetEdge(simple.Edge{F: packageNode, T: dependencyNode})
+				graphMutex.Unlock() // We're done, release it to the next goroutine
+			}
+
+		}
+	}
+}
+
 func parseMultipleMavenSemVers(s string, reg *regexp.Regexp) string {
 	var finalResult string
 	chars := []rune(s)
@@ -335,8 +399,9 @@ func CreateGraph(inputPath string, isUsingMaven bool) (*simple.DirectedGraph, ma
 	hashToNodeId, idToNodeInfo := CreateMaps(&packagesList, graph)
 	nameToVersions := CreateNameToVersionMap(&packagesList)
 	fmt.Println("Creating edges")
-	fmt.Println()
-	CreateEdges(graph, &packagesList, hashToNodeId, idToNodeInfo, nameToVersions, isUsingMaven)
+	//CreateEdges(graph, &packagesList, hashToNodeId, idToNodeInfo, nameToVersions, isUsingMaven)
+	CreateEdgesConcurrent(graph, &packagesList, hashToNodeId, idToNodeInfo, nameToVersions, isUsingMaven)
+	fmt.Println("Done!")
 	// TODO: This might cause some issues but for now it saves it quite a lot of memory
 	runtime.GC()
 	return graph, hashToNodeId, idToNodeInfo, nameToVersions

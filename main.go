@@ -6,6 +6,18 @@ func main() {
 	//TODO: Move to graph.go; Integrate nicely with cli
 	// To use the cli: go run main.go start.
 	cmd.Execute()
+	// graph1, _, nodeInfoMap, _ := g.CreateGraph("data/input/processed-100k.json", false)
+
+	// pr := network.PageRank(graph1, 0.85, 0.01)
+	// maxRank := 0.0
+	// var mostUsedId int64
+	// for id, rank := range pr {
+	// 	if rank > maxRank {
+	// 		maxRank = rank
+	// 		mostUsedId = id
+	// 	}
+	// }
+	// fmt.Printf("The highest-ranked node (%v) has rank %f", nodeInfoMap[mostUsedId], maxRank)
 	//duration := 365 * 24 * time.Hour
 	//beginTime, _ := time.Parse(time.RFC3339, "2021-01-01T00:00:00Z01:00")
 	//endTime := beginTime.Add(duration)
