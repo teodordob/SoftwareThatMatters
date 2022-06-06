@@ -1,10 +1,8 @@
 package graph
 
 import (
-	"bytes"
-	"crypto/sha1"
-	"encoding/binary"
 	"fmt"
+	"hash/crc64"
 	"log"
 	"os"
 	"regexp"
@@ -41,6 +39,8 @@ type NodeInfo struct {
 	Version   string
 	Timestamp string
 }
+
+var crcTable *crc64.Table = crc64.MakeTable(crc64.ISO)
 
 // NewNodeInfo constructs a NodeInfo structure and automatically fills the stringID.
 func NewNodeInfo(id int64, name string, version string, timestamp string) *NodeInfo {
@@ -148,7 +148,7 @@ func VisualizationNodeInfo(iDToNodeInfo *map[string]NodeInfo, graph *simple.Dire
 // TODO: Discuss removing pointers from maps since they are reference types without the need of using * : https://stackoverflow.com/questions/40680981/are-maps-passed-by-value-or-by-reference-in-go
 func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, hashToNodeId map[uint64]int64, nodeInfoMap map[int64]NodeInfo, nameToVersionMap map[string][]string, isMaven bool) {
 	r, _ := regexp.Compile("((?P<open>[\\(\\[])(?P<bothVer>((?P<firstVer>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)(?P<comma1>,)(?P<secondVer1>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?)|((?P<comma2>,)?(?P<secondVer2>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?))(?P<close>[\\)\\]]))|(?P<simplevers>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)")
-	for _, packageInfo := range *inputList {
+	for id, packageInfo := range *inputList {
 		for version, dependencyInfo := range packageInfo.Versions {
 			for dependencyName, dependencyVersion := range dependencyInfo.Dependencies {
 				finaldep := dependencyVersion
@@ -188,6 +188,10 @@ func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, hashToNo
 					}
 				}
 			}
+		}
+
+		if id%1000 == 0 {
+			fmt.Printf("\u001b[1000D Created edges for %d packages\n", id)
 		}
 	}
 }
@@ -309,10 +313,7 @@ func CreateMaps(packageList *[]PackageInfo, graph *simple.DirectedGraph) (map[ui
 }
 
 func hashStringId(stringID string) uint64 {
-	sum := sha1.Sum([]byte(stringID))
-	var hashed uint64
-	buf := bytes.NewBuffer(sum[:])
-	binary.Read(buf, binary.LittleEndian, &hashed)
+	hashed := crc64.Checksum([]byte(stringID), crcTable)
 	return hashed
 }
 
@@ -323,12 +324,17 @@ func LookupByStringId(stringId string, hashTable map[uint64]int64) int64 {
 }
 
 func CreateGraph(inputPath string, isUsingMaven bool) (*simple.DirectedGraph, map[uint64]int64, map[int64]NodeInfo, map[string][]string) {
+	fmt.Println("Parsing input")
 	packagesList := ParseJSON(inputPath)
+	runtime.GC()
 	graph := simple.NewDirectedGraph()
 	// stringIDToNodeInfo := CreateStringIDToNodeInfoMap(packagesList, graph)
 	// idToNodeInfo := CreateNodeIdToPackageMap(stringIDToNodeInfo)
+	fmt.Println("Adding nodes and creating indices")
 	hashToNodeId, idToNodeInfo := CreateMaps(&packagesList, graph)
 	nameToVersions := CreateNameToVersionMap(&packagesList)
+	fmt.Println("Creating edges")
+	fmt.Println()
 	CreateEdges(graph, &packagesList, hashToNodeId, idToNodeInfo, nameToVersions, isUsingMaven)
 	// TODO: This might cause some issues but for now it saves it quite a lot of memory
 	runtime.GC()
