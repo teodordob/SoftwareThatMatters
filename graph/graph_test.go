@@ -189,7 +189,6 @@ func nodeInfosEqual(expected, actual NodeInfo) bool {
 func createTestNodeInfo(pi PackageInfo, version string) NodeInfo {
 	return NodeInfo{
 		id:        -1,
-		stringID:  "invalid",
 		Name:      pi.Name,
 		Version:   version,
 		Timestamp: pi.Versions[version].Timestamp,
