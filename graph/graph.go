@@ -251,7 +251,7 @@ func createEdgesForDependency(dependencyName string, dependencyVersion string, i
 			packageGoId := LookupByStringId(packageStringId, hashToNodeId)
 			packageNode := graph.Node(packageGoId)
 
-			if dependencyNode != packageNode {
+			if dependencyGoId != packageGoId { // This prevents self-loops
 				graphMutex.Lock() // Kindly ask if we can use the graph yet
 				graph.SetEdge(simple.Edge{F: packageNode, T: dependencyNode})
 				graphMutex.Unlock() // We're done, release it to the next goroutine
