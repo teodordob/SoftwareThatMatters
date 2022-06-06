@@ -35,7 +35,6 @@ type Doc struct {
 // NodeInfo is a type structure for nodes. Name and Version can be removed if we find we don't use them often enough
 type NodeInfo struct {
 	id        int64
-	stringID  string
 	Name      string
 	Version   string
 	Timestamp string
@@ -49,7 +48,6 @@ const maxConcurrent = 12 // The max amount of goroutines the CreateEdgesConcurre
 func NewNodeInfo(id int64, name string, version string, timestamp string) *NodeInfo {
 	return &NodeInfo{
 		id:        id,
-		stringID:  fmt.Sprintf("%s-%s", name, version),
 		Name:      name,
 		Version:   version,
 		Timestamp: timestamp}
@@ -116,7 +114,7 @@ func Visualization(graph *simple.DirectedGraph, name string) {
 
 //Writes to dot file manually from the NodeInfoMap to include the Node info in the graphViz
 //TODO: Optimize in the future since this is kind of barbaric probably there is a faster way.
-func VisualizationNodeInfo(iDToNodeInfo *map[string]NodeInfo, graph *simple.DirectedGraph, name string) {
+func VisualizationNodeInfo(iDToNodeInfo map[int64]NodeInfo, graph *simple.DirectedGraph, name string) {
 	file, err := os.Create(name + ".dot")
 	d1 := []byte("strict digraph" + " " + name + " " + "{\n")
 	d2 := []byte("}")
@@ -125,9 +123,9 @@ func VisualizationNodeInfo(iDToNodeInfo *map[string]NodeInfo, graph *simple.Dire
 
 	fmt.Fprint(file, string(d1))
 
-	for key, element := range *iDToNodeInfo {
+	for _, element := range iDToNodeInfo {
 		//fmt.Println("Key:", key, "=>", "Element:", element.id)
-		fmt.Fprintf(file, fmt.Sprint(element.id)+lab+string(key)+` \n `+string(element.Version)+` \n `+string(element.Timestamp)+"\""+"];\n")
+		fmt.Fprintf(file, fmt.Sprint(element.id)+lab+fmt.Sprintf("%s-%s", element.Name, element.Version)+` \n `+string(element.Version)+` \n `+string(element.Timestamp)+"\""+"];\n")
 
 	}
 
@@ -238,7 +236,6 @@ func createEdgesForDependency(dependencyName string, dependencyVersion string, i
 
 		newVersion, err := semver.NewVersion(v)
 		if err != nil {
-
 			continue
 		}
 		if constraint.Check(newVersion) {
