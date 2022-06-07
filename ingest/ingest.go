@@ -223,7 +223,7 @@ func MergeJSON(inPathTemplate string, amount int) {
 
 	defer outFile.Close()
 
-	outFile.WriteString(`{"pkgs": [\n`)
+	outFile.WriteString("{\"pkgs\": [\n")
 
 	for i := 0; i < amount; i++ {
 		currentPath := fmt.Sprintf(inPathTemplate, fmt.Sprint(i))
