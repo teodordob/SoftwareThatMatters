@@ -409,8 +409,8 @@ func CreateGraph(inputPath string, isUsingMaven bool) (*simple.DirectedGraph, ma
 	nameToVersions := CreateNameToVersionMap(&packagesList)
 	fmt.Println("Creating edges")
 	fmt.Println()
-	//CreateEdges(graph, &packagesList, hashToNodeId, idToNodeInfo, nameToVersions, isUsingMaven)
-	CreateEdgesConcurrent(graph, &packagesList, hashToNodeId, idToNodeInfo, nameToVersions, isUsingMaven)
+	CreateEdges(graph, &packagesList, hashToNodeId, idToNodeInfo, nameToVersions, isUsingMaven)
+	// CreateEdgesConcurrent(graph, &packagesList, hashToNodeId, idToNodeInfo, nameToVersions, isUsingMaven)
 	fmt.Println("Done!")
 	// TODO: This might cause some issues but for now it saves it quite a lot of memory
 	runtime.GC()
