@@ -1,23 +1,28 @@
 package main
 
-import "github.com/AJMBrands/SoftwareThatMatters/cmd"
+import (
+	"fmt"
+
+	"github.com/AJMBrands/SoftwareThatMatters/graph"
+	"gonum.org/v1/gonum/graph/network"
+)
 
 func main() {
 	//TODO: Move to graph.go; Integrate nicely with cli
 	// To use the cli: go run main.go start.
-	cmd.Execute()
-	// graph1, _, nodeInfoMap, _ := g.CreateGraph("data/input/processed-100k.json", false)
+	//cmd.Execute()
+	graph1, _, nodeInfoMap, _ := graph.CreateGraph("data/input/processed-100k.json", false)
 
-	// pr := network.PageRank(graph1, 0.85, 0.01)
-	// maxRank := 0.0
-	// var mostUsedId int64
-	// for id, rank := range pr {
-	// 	if rank > maxRank {
-	// 		maxRank = rank
-	// 		mostUsedId = id
-	// 	}
-	// }
-	// fmt.Printf("The highest-ranked node (%v) has rank %f", nodeInfoMap[mostUsedId], maxRank)
+	pr := network.PageRankSparse(graph1, 0.85, 0.001)
+	maxRank := 0.0
+	var mostUsedId int64
+	for id, rank := range pr {
+		if rank > maxRank {
+			maxRank = rank
+			mostUsedId = id
+		}
+	}
+	fmt.Printf("The highest-ranked node (%v) has rank %f", nodeInfoMap[mostUsedId], maxRank)
 	//duration := 365 * 24 * time.Hour
 	//beginTime, _ := time.Parse(time.RFC3339, "2021-01-01T00:00:00Z01:00")
 	//endTime := beginTime.Add(duration)
@@ -49,6 +54,6 @@ func main() {
 	//Uncomment this to create the visualization and use these commands in the dot file
 	//Toggle Preview - ctrl+shift+v (Mac: cmd+shift+v)
 	//Open Preview to the Side - ctrl+k v (Mac: cmd+k shift+v)
-	// g.Visualization(graph, "OnlyIds")
-	// g.VisualizationNodeInfo(stringIDToNodeInfo, graph, "IDInfo")
+	graph.Visualization(graph1, "OnlyIds")
+	graph.VisualizationNodeInfo(nodeInfoMap, graph1, "IDInfo")
 }
