@@ -162,7 +162,7 @@ func VisualizationNodeInfo(iDToNodeInfo map[int64]NodeInfo, graph *simple.Direct
 // a map of names to versions and creates directed edges between the dependent library and its dependencies.
 // TODO: add documentation on how we use semver for edges
 // TODO: Discuss removing pointers from maps since they are reference types without the need of using * : https://stackoverflow.com/questions/40680981/are-maps-passed-by-value-or-by-reference-in-go
-func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, hashToNodeId map[uint64]int64, nodeInfoMap map[int64]NodeInfo, nameToVersionMap map[string][]string, isMaven bool) {
+func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, hashToNodeId map[uint64]int64, nodeInfoMap map[int64]NodeInfo, hashToVersionMap map[uint32][]string, isMaven bool) {
 	r, _ := regexp.Compile("((?P<open>[\\(\\[])(?P<bothVer>((?P<firstVer>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)(?P<comma1>,)(?P<secondVer1>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?)|((?P<comma2>,)?(?P<secondVer2>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?))(?P<close>[\\)\\]]))|(?P<simplevers>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)")
 	n := len(*inputList)
 	for id, packageInfo := range *inputList {
@@ -181,7 +181,7 @@ func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, hashToNo
 					////log.Fatal(finaldep)
 					//log.Fatal(err)
 				}
-				for _, v := range nameToVersionMap[dependencyName] {
+				for _, v := range LookupVersions(dependencyName, hashToVersionMap) {
 					//newVersion, _ := semver2.Parse(v)
 					newVersion, err := semver.NewVersion(v)
 					if err != nil {
@@ -420,7 +420,7 @@ func LookupByStringId(stringId string, hashTable map[uint64]int64) int64 {
 	return goId
 }
 
-func CreateGraph(inputPath string, isUsingMaven bool) (*simple.DirectedGraph, map[uint64]int64, map[int64]NodeInfo, map[string][]string) {
+func CreateGraph(inputPath string, isUsingMaven bool) (*simple.DirectedGraph, map[uint64]int64, map[int64]NodeInfo, map[uint32][]string) {
 	fmt.Println("Parsing input")
 	packagesList := ParseJSON(inputPath)
 	runtime.GC()
@@ -429,15 +429,16 @@ func CreateGraph(inputPath string, isUsingMaven bool) (*simple.DirectedGraph, ma
 	// idToNodeInfo := CreateNodeIdToPackageMap(stringIDToNodeInfo)
 	fmt.Println("Adding nodes and creating indices")
 	hashToNodeId, idToNodeInfo := CreateMaps(&packagesList, graph)
-	nameToVersions := CreateNameToVersionMap(&packagesList)
+	// nameToVersions := CreateNameToVersionMap(&packagesList)
+	hashToVersions := CreateHashedVersionMap(&packagesList)
 	fmt.Println("Creating edges")
 	fmt.Println()
-	CreateEdges(graph, &packagesList, hashToNodeId, idToNodeInfo, nameToVersions, isUsingMaven)
+	CreateEdges(graph, &packagesList, hashToNodeId, idToNodeInfo, hashToVersions, isUsingMaven)
 	//CreateEdgesConcurrent(graph, &packagesList, hashToNodeId, idToNodeInfo, nameToVersions, isUsingMaven)
 	fmt.Println("Done!")
 	// TODO: This might cause some issues but for now it saves it quite a lot of memory
 	runtime.GC()
-	return graph, hashToNodeId, idToNodeInfo, nameToVersions
+	return graph, hashToNodeId, idToNodeInfo, hashToVersions
 }
 
 // This function returns true when time t lies in the interval [begin, end], false otherwise

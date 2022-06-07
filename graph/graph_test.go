@@ -34,8 +34,8 @@ func TestNodeCreationBasicGraph(t *testing.T) {
 	//dummyMap := make(map[int64]NodeInfo)
 	graph := simple.NewDirectedGraph()
 	hashMap, nodeMap := CreateMaps(&simplePackageInfo, graph)
-	nameVersion := CreateNameToVersionMap(&simplePackageInfo)
-	CreateEdges(graph, &simplePackageInfo, hashMap, nodeMap, nameVersion, false)
+	hashToVersionMap := CreateHashedVersionMap(&simplePackageInfo)
+	CreateEdges(graph, &simplePackageInfo, hashMap, nodeMap, hashToVersionMap, false)
 
 	t.Run("Create two nodes because we specified two packages", func(t *testing.T) {
 
@@ -131,8 +131,8 @@ func TestNodeCreationMediumComplexity(t *testing.T) {
 	//dummyMap := make(map[int64]NodeInfo)
 	graph := simple.NewDirectedGraph()
 	hashMap, nodeMap := CreateMaps(&mediumPackageInfo, graph)
-	nameVersion := CreateNameToVersionMap(&mediumPackageInfo)
-	CreateEdges(graph, &mediumPackageInfo, hashMap, nodeMap, nameVersion, false)
+	hashToVersionMap := CreateHashedVersionMap(&mediumPackageInfo)
+	CreateEdges(graph, &mediumPackageInfo, hashMap, nodeMap, hashToVersionMap, false)
 
 	t.Run("Creates 8 nodes, one for every package version", func(t *testing.T) {
 
@@ -221,8 +221,8 @@ func TestCreateEdgesBasicGraph(t *testing.T) {
 	//dummyMap := make(map[int64]NodeInfo)
 	graph := simple.NewDirectedGraph()
 	hashMap, nodeMap := CreateMaps(&simplePackagesInfo, graph)
-	nameVersion := CreateNameToVersionMap(&simplePackagesInfo)
-	CreateEdges(graph, &simplePackagesInfo, hashMap, nodeMap, nameVersion, false)
+	hashToVersionMap := CreateHashedVersionMap(&simplePackagesInfo)
+	CreateEdges(graph, &simplePackagesInfo, hashMap, nodeMap, hashToVersionMap, false)
 
 	t.Run("Creates one edge when there is one dependency", func(t *testing.T) {
 
@@ -294,8 +294,8 @@ func TestCreateEdgesMediumComplexityGraph(t *testing.T) {
 	//dummyMap := make(map[int64]NodeInfo)
 	graph := simple.NewDirectedGraph()
 	hashMap, nodeMap := CreateMaps(&packagesInfo, graph)
-	nameVersion := CreateNameToVersionMap(&packagesInfo)
-	CreateEdges(graph, &packagesInfo, hashMap, nodeMap, nameVersion, false)
+	hashToVersionMap := CreateHashedVersionMap(&packagesInfo)
+	CreateEdges(graph, &packagesInfo, hashMap, nodeMap, hashToVersionMap, false)
 	t.Run("Creates 4 edges when there are 4 possible dependencies", func(t *testing.T) {
 		if graph.Edges().Len() != 4 {
 			t.Errorf("Expected 4 edges, got %d", graph.Edges().Len())
