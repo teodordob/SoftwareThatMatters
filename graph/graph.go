@@ -2,6 +2,7 @@ package graph
 
 import (
 	"fmt"
+	"hash/crc32"
 	"hash/crc64"
 	"log"
 	"os"
@@ -86,6 +87,18 @@ func CreateNodeIdToPackageMap(m map[string]NodeInfo) map[int64]NodeInfo {
 		s[val.id] = val
 	}
 	return s
+}
+
+func CreateHashedVersionMap(pi *[]PackageInfo) map[uint32][]string {
+	result := make(map[uint32][]string, len(*pi))
+	for _, pkg := range *pi {
+		hashedName := hashPackageName(pkg.Name)
+		result[hashedName] = make([]string, 0, len(pkg.Versions))
+		for ver := range pkg.Versions {
+			result[hashedName] = append(result[hashedName], ver)
+		}
+	}
+	return result
 }
 
 func CreateNameToVersionMap(m *[]PackageInfo) map[string][]string {
@@ -389,6 +402,16 @@ func CreateMaps(packageList *[]PackageInfo, graph *simple.DirectedGraph) (map[ui
 func hashStringId(stringID string) uint64 {
 	hashed := crc64.Checksum([]byte(stringID), crcTable)
 	return hashed
+}
+
+func hashPackageName(packageName string) uint32 {
+	hashed := crc32.ChecksumIEEE([]byte(packageName))
+	return hashed
+}
+
+func LookupVersions(packageName string, versionMap map[uint32][]string) []string {
+	hash := hashPackageName(packageName)
+	return versionMap[hash]
 }
 
 func LookupByStringId(stringId string, hashTable map[uint64]int64) int64 {
