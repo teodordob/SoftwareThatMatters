@@ -43,7 +43,7 @@ type NodeInfo struct {
 var crcTable *crc64.Table = crc64.MakeTable(crc64.ISO)
 var mvnRegex *regexp.Regexp = regexp.MustCompile("((?P<open>[\\(\\[])(?P<bothVer>((?P<firstVer>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)(?P<comma1>,)(?P<secondVer1>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?)|((?P<comma2>,)?(?P<secondVer2>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?))(?P<close>[\\)\\]]))|(?P<simplevers>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)")
 
-const maxConcurrent = 2 // The max amount of goroutines the CreateEdgesConcurrent function can spawn
+const maxConcurrent = 3 // The max amount of goroutines the CreateEdgesConcurrent function can spawn
 
 // NewNodeInfo constructs a NodeInfo structure and automatically fills the stringID.
 func NewNodeInfo(id int64, name string, version string, timestamp string) *NodeInfo {
@@ -409,8 +409,8 @@ func CreateGraph(inputPath string, isUsingMaven bool) (*simple.DirectedGraph, ma
 	nameToVersions := CreateNameToVersionMap(&packagesList)
 	fmt.Println("Creating edges")
 	fmt.Println()
-	CreateEdges(graph, &packagesList, hashToNodeId, idToNodeInfo, nameToVersions, isUsingMaven)
-	//CreateEdgesConcurrent(graph, &packagesList, hashToNodeId, idToNodeInfo, nameToVersions, isUsingMaven)
+	//CreateEdges(graph, &packagesList, hashToNodeId, idToNodeInfo, nameToVersions, isUsingMaven)
+	CreateEdgesConcurrent(graph, &packagesList, hashToNodeId, idToNodeInfo, nameToVersions, isUsingMaven)
 	fmt.Println("Done!")
 	// TODO: This might cause some issues but for now it saves it quite a lot of memory
 	runtime.GC()
