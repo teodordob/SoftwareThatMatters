@@ -15,6 +15,7 @@ import (
 	"github.com/mailru/easyjson"
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/encoding/dot"
+	"gonum.org/v1/gonum/graph/network"
 	"gonum.org/v1/gonum/graph/simple"
 	"gonum.org/v1/gonum/graph/traverse"
 )
@@ -573,4 +574,10 @@ func GetTransitiveDependenciesNode(g *simple.DirectedGraph, nodeMap map[int64]No
 
 	_ = w.Walk(g, g.Node(nodeId), nil)
 	return &result
+}
+
+// This uses the sparse page rank algorithm to find the Page ranks of all nodes
+func PageRank(graph *simple.DirectedGraph) map[int64]float64 {
+	pr := network.PageRankSparse(graph, 0.85, 0.01)
+	return pr
 }

@@ -115,6 +115,16 @@ func start() {
 			}
 		case 3:
 			fmt.Println("This should find the most used package")
+			pr := g.PageRank(graph)
+			maxRank := 0.0
+			var mostUsedId int64
+			for id, rank := range pr {
+				if rank > maxRank {
+					maxRank = rank
+					mostUsedId = id
+				}
+			}
+			fmt.Printf("The highest-ranked node (%v) has rank %f \n", idToNodeInfo[mostUsedId], maxRank)
 		case 4:
 			fmt.Println("Stopping the program...")
 			stop = true
