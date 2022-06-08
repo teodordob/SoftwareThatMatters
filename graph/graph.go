@@ -21,13 +21,13 @@ import (
 )
 
 type VersionInfo struct {
-	Timestamp    string            `json:"timestamp"`
 	Dependencies map[string]string `json:"dependencies"`
+	Timestamp    string            `json:"timestamp"`
 }
 
 type PackageInfo struct {
-	Name     string                 `json:"name"`
 	Versions map[string]VersionInfo `json:"versions"`
+	Name     string                 `json:"name"`
 }
 
 type Doc struct {
@@ -36,10 +36,27 @@ type Doc struct {
 
 // NodeInfo is a type structure for nodes. Name and Version can be removed if we find we don't use them often enough
 type NodeInfo struct {
-	id        int64
+	Timestamp string
 	Name      string
 	Version   string
-	Timestamp string
+	id        int64
+}
+
+type GraphEdge struct {
+	g        *simple.DirectedGraph // Graph pointer
+	FId, TId int64                 // From id, To id
+}
+
+func (e GraphEdge) From() graph.Node {
+	return e.g.Node(e.FId)
+}
+
+func (e GraphEdge) To() graph.Node {
+	return e.g.Node(e.TId)
+}
+
+func (e GraphEdge) ReversedEdge() graph.Edge {
+	return GraphEdge{FId: e.TId, TId: e.FId, g: e.g}
 }
 
 var crcTable *crc64.Table = crc64.MakeTable(crc64.ISO)
@@ -193,14 +210,13 @@ func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, hashToNo
 					if constraint.Check(newVersion) {
 						dependencyStringId := fmt.Sprintf("%s-%s", dependencyName, v)
 						dependencyGoId := LookupByStringId(dependencyStringId, hashToNodeId)
-						dependencyNode := graph.Node(dependencyGoId)
 
 						packageStringId := fmt.Sprintf("%s-%s", packageInfo.Name, version)
 						packageGoId := LookupByStringId(packageStringId, hashToNodeId)
-						packageNode := graph.Node(packageGoId)
+
 						// Ensure that we do not create edges to self because some packages do that...
-						if dependencyNode != packageNode {
-							graph.SetEdge(simple.Edge{F: packageNode, T: dependencyNode})
+						if dependencyGoId != packageGoId {
+							graph.SetEdge(GraphEdge{FId: packageGoId, TId: dependencyGoId, g: graph})
 						}
 
 					}
@@ -209,9 +225,9 @@ func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, hashToNo
 		}
 		fmt.Printf("\u001b[1A \u001b[2K \r") // Clear the last line
 		fmt.Printf("%.2f%% done (%d / %d packages connected to their dependencies)\n", float32(id)/float32(n)*100, id, n)
-		if id%1000 == 0 {
-			runtime.GC() // Garbage collect every 1000 packages
-		}
+		// if id%1000 == 0 {
+		// 	debug.FreeOSMemory()
+		// }
 	}
 }
 
@@ -425,7 +441,7 @@ func LookupByStringId(stringId string, hashTable map[uint64]int64) int64 {
 func CreateGraph(inputPath string, isUsingMaven bool) (*simple.DirectedGraph, map[uint64]int64, map[int64]NodeInfo, map[uint32][]string) {
 	fmt.Println("Parsing input")
 	packagesList := ParseJSON(inputPath)
-	runtime.GC()
+	// runtime.GC()
 	graph := simple.NewDirectedGraph()
 	// stringIDToNodeInfo := CreateStringIDToNodeInfoMap(packagesList, graph)
 	// idToNodeInfo := CreateNodeIdToPackageMap(stringIDToNodeInfo)
