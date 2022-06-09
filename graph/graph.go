@@ -601,7 +601,7 @@ func GetTransitiveDependenciesNode(g *simple.DirectedGraph, nodeMap map[int64]No
 // Get the latest dependencies matching the node's version constraints. If you want this within a specific time frame, use filterNode first
 func GetLatestTransitiveDependenciesNode(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, hashMap map[uint64]int64, stringId string) *[]NodeInfo {
 	var rootNode NodeInfo
-	allDeps := GetLatestTransitiveDependenciesNode(g, nodeMap, hashMap, stringId)
+	allDeps := GetTransitiveDependenciesNode(g, nodeMap, hashMap, stringId)
 	result := make([]NodeInfo, 0, len(*allDeps)/2)
 	if len(*allDeps) > 1 {
 		rootNode = (*allDeps)[0]
