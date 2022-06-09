@@ -82,6 +82,7 @@ func start() {
 				"Find all packages between two timestamps",
 				"Find all the possible dependencies of a package",
 				"Find all the possible dependencies of a package between two timestamps",
+				"Find the latest dependencies of a package between two timestamps",
 				"Find the most used package",
 				"Quit",
 			},
@@ -114,6 +115,13 @@ func start() {
 				fmt.Println(node)
 			}
 		case 3:
+			fmt.Println("This should find the latest dependencies of a package between two time stamps")
+			nodes := findLatestDependenciesOfAPackageBetweenTwotimestamps(graph, hashMap, idToNodeInfo)
+
+			for _, node := range *nodes {
+				fmt.Println(node)
+			}
+		case 4:
 			fmt.Println("This should find the most used package")
 			pr := g.PageRank(graph)
 			maxRank := 0.0
@@ -125,7 +133,7 @@ func start() {
 				}
 			}
 			fmt.Printf("The highest-ranked node (%v) has rank %f \n", idToNodeInfo[mostUsedId], maxRank)
-		case 4:
+		case 5:
 			fmt.Println("Stopping the program...")
 			stop = true
 		}
@@ -189,6 +197,14 @@ func findAllDependenciesOfAPackageBetweenTwoTimestamps(graph *simple.DirectedGra
 	nodeStringId := generateAndRunPackageNamePrompt("Please select the name and the version of the package", nodeMap)
 	g.FilterGraph(graph, nodeMap, beginTime, endTime)
 	return g.GetTransitiveDependenciesNode(graph, nodeMap, hashMap, nodeStringId)
+}
+
+func findLatestDependenciesOfAPackageBetweenTwotimestamps(graph *simple.DirectedGraph, hashMap map[uint64]int64, nodeMap map[int64]g.NodeInfo) *[]g.NodeInfo {
+	beginTime := generateAndRunDatePrompt("Please input the beginning date of the interval (DD-MM-YYYY)")
+	endTime := generateAndRunDatePrompt("Please input the end date of the interval (DD-MM-YYYY)")
+	nodeStringId := generateAndRunPackageNamePrompt("Please select the name and the version of the package", nodeMap)
+	g.FilterGraph(graph, nodeMap, beginTime, endTime)
+	return g.GetLatestTransitiveDependenciesNode(graph, nodeMap, hashMap, nodeStringId)
 }
 
 func generateAndRunDatePrompt(message string) time.Time {

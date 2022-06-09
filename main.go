@@ -1,8 +1,11 @@
 package main
 
 import (
-	"github.com/AJMBrands/SoftwareThatMatters/cmd"
 	"runtime/debug"
+
+	_ "net/http/pprof"
+
+	"github.com/AJMBrands/SoftwareThatMatters/cmd"
 )
 
 func main() {
@@ -10,8 +13,28 @@ func main() {
 	//TODO: Move to graph.go; Integrate nicely with cli
 	// To use the cli: go run main.go start.
 	cmd.Execute()
-	// graph1, _, nodeInfoMap, _ := graph.CreateGraph("data/input/processed-100k.json", false)
+	// var wg sync.WaitGroup
 
+	// go func() {
+	// 	fmt.Println(http.ListenAndServe("localhost:6060", nil))
+	// }()
+
+	// wg.Add(1)
+
+	// graph1, _, idToNodeInfo, _ := graph.CreateGraph("data/input/processed-10k.json", false)
+
+	// pr := graph.PageRank(graph1)
+	// maxRank := 0.0
+	// var mostUsedId int64
+	// for id, rank := range pr {
+	// 	if rank > maxRank {
+	// 		maxRank = rank
+	// 		mostUsedId = id
+	// 	}
+	// }
+	// fmt.Printf("The highest-ranked node (%v) has rank %f \n", idToNodeInfo[mostUsedId], maxRank)
+	// graph.VisualizationNodeInfo(idToNodeInfo, graph1, "IDInfo")
+	// wg.Wait()
 	// pr := network.PageRankSparse(graph1, 0.85, 0.001)
 
 	//duration := 365 * 24 * time.Hour
@@ -45,6 +68,5 @@ func main() {
 	//Uncomment this to create the visualization and use these commands in the dot file
 	//Toggle Preview - ctrl+shift+v (Mac: cmd+shift+v)
 	//Open Preview to the Side - ctrl+k v (Mac: cmd+k shift+v)
-	// graph.Visualization(graph1, "OnlyIds")
-	// graph.VisualizationNodeInfo(nodeInfoMap, graph1, "IDInfo")
+	//graph.Visualization(graph1, "OnlyIds")
 }
