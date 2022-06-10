@@ -406,7 +406,7 @@ func CreateGraph(inputPath string, isUsingMaven bool) (*simple.DirectedGraph, ma
 	runtime.GC()
 	numNodes := graph.Nodes().Len()
 	runtime.GC()
-	numEdges := graph.Nodes().Len()
+	numEdges := graph.Edges().Len()
 	runtime.GC()
 	fmt.Printf("Nodes: %d, Edges: %d\n", numNodes, numEdges)
 	return graph, hashToNodeId, idToNodeInfo, hashToVersions
