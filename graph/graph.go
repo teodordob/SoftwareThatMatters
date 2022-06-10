@@ -531,7 +531,7 @@ func traverseOneNode(g *simple.DirectedGraph, nodeId int64, withinInterval map[i
 	removeDisconnected(g, connected)
 }
 
-func FilterGraph(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, beginTime, endTime time.Time) {
+func filterGraph(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, beginTime, endTime time.Time) {
 	// This stores whether the package existed in the specified time range
 	withinInterval := make(map[int64]bool, len(nodeMap))
 	// This keeps track of which edges we've connected
@@ -540,7 +540,10 @@ func FilterGraph(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, beginTime,
 	initializeTraversal(g, nodeMap, connected, withinInterval, beginTime, endTime, w) // Initialize all auxillary data structures for the traversal
 
 	traverseAndRemoveEdges(g, withinInterval, w, connected) // Traverse the graph and remove stale edges
+}
 
+func FilterGraph(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, beginTime, endTime time.Time) {
+	filterGraph(g, nodeMap, beginTime, endTime)
 }
 
 func findNode(hashMap map[uint64]int64, idToNodeInfo map[int64]NodeInfo, stringId string) (int64, bool) {
@@ -593,6 +596,114 @@ func GetTransitiveDependenciesNode(g *simple.DirectedGraph, nodeMap map[int64]No
 
 	_ = w.Walk(g, g.Node(nodeId), nil)
 	return &result
+}
+
+// Get the latest dependencies matching the node's version constraints. If you want this within a specific time frame, use filterNode first
+func GetLatestTransitiveDependenciesNode(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, hashMap map[uint64]int64, stringId string) *[]NodeInfo {
+	var rootNode NodeInfo
+	allDeps := GetTransitiveDependenciesNode(g, nodeMap, hashMap, stringId)
+	result := make([]NodeInfo, 0, len(*allDeps)/2)
+	if len(*allDeps) > 1 {
+		rootNode = (*allDeps)[0]
+	} else {
+		return &result // No-op if no dependencies were found for whatever reason
+	}
+
+	newestPackageVersion := make(map[uint32]NodeInfo, len(*allDeps)/2)
+
+	result = append(result, rootNode)
+
+	// This for loop does the actual filtering
+	for _, current := range *allDeps {
+
+		if current.id == rootNode.id {
+			continue
+		}
+
+		hash := hashPackageName(current.Name)
+		currentDate, err := time.Parse(time.RFC3339, current.Timestamp)
+		if err != nil {
+			continue
+		}
+		if latest, ok := newestPackageVersion[hash]; ok {
+			latestDate, err := time.Parse(time.RFC3339, latest.Timestamp)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			} else if currentDate.After(latestDate) { // If the key exists, and current date is later than the one stored
+				newestPackageVersion[hash] = current // Set to the current package
+			} else if currentDate.Equal(latestDate) { // If the dates are somehow equal, compare version numbers
+				currentversion, _ := semver.NewVersion(current.Version)
+				latestVersion, _ := semver.NewVersion(latest.Version)
+
+				if currentversion.GreaterThan(latestVersion) {
+					newestPackageVersion[hash] = current
+				}
+			}
+		} else { // If the key doesn't exist yet
+			newestPackageVersion[hash] = current
+		}
+	}
+
+	for _, v := range newestPackageVersion { // Add all latest package versions to the result
+		result = append(result, v)
+	}
+
+	return &result
+}
+
+func keepSelectedNodes(g *simple.DirectedGraph, keepIDS map[int64]struct{}, nodeMap map[int64]NodeInfo) {
+	for id := range nodeMap {
+		if _, ok := keepIDS[id]; !ok { // If the node id was not on the list, kick it out
+			g.RemoveNode(id)
+		}
+	}
+}
+
+// Filter the graph between the two given time stamps and then only keep the latest dependencies
+func FilterLatestDepsGraph(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, hashMap map[uint64]int64, beginTime, endTime time.Time) {
+	filterGraph(g, nodeMap, beginTime, endTime)
+	length := g.Nodes().Len() / 2
+
+	keepIDs := make(map[int64]struct{}, length)
+	newestPackageVersion := make(map[uint32]NodeInfo, length)
+	v := traverse.DepthFirst{
+		Visit: func(n graph.Node) {
+			current := nodeMap[n.ID()]
+			currentDate, _ := time.Parse(time.RFC3339, current.Timestamp)
+			hash := hashPackageName(current.Name)
+
+			if latest, ok := newestPackageVersion[hash]; ok {
+				latestDate, _ := time.Parse(time.RFC3339, latest.Timestamp)
+				if currentDate.After(latestDate) { // If the key exists, and current date is later than the one stored
+					newestPackageVersion[hash] = current // Set to the current package
+				} else if currentDate.Equal(latestDate) { // If the dates are somehow equal, compare version numbers
+					currentversion, _ := semver.NewVersion(current.Version)
+					latestVersion, _ := semver.NewVersion(latest.Version)
+
+					if currentversion.GreaterThan(latestVersion) {
+						newestPackageVersion[hash] = current
+					}
+				}
+			} else { // If the key doesn't exist yet
+				newestPackageVersion[hash] = current
+			}
+		},
+	}
+
+	nodes := g.Nodes()
+	for nodes.Next() {
+		n := nodes.Node()
+		_ = v.Walk(g, n, nil)
+		v.Reset()
+	}
+
+	for _, v := range newestPackageVersion {
+		keepIDs[v.id] = struct{}{}
+	}
+
+	keepSelectedNodes(g, keepIDs, nodeMap)
+
 }
 
 // This uses the sparse page rank algorithm to find the Page ranks of all nodes
