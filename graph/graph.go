@@ -61,7 +61,7 @@ func (e GraphEdge) ReversedEdge() graph.Edge {
 }
 
 var crcTable *crc64.Table = crc64.MakeTable(crc64.ISO)
-var mvnRegex *regexp.Regexp = regexp.MustCompile("((?P<open>[\\(\\[])(?P<bothVer>((?P<firstVer>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)(?P<comma1>,)(?P<secondVer1>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?)|((?P<comma2>,)?(?P<secondVer2>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?))(?P<close>[\\)\\]]))|(?P<simplevers>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)")
+var r *regexp.Regexp = regexp.MustCompile("((?P<open>[\\(\\[])(?P<bothVer>((?P<firstVer>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)(?P<comma1>,)(?P<secondVer1>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?)|((?P<comma2>,)?(?P<secondVer2>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?))(?P<close>[\\)\\]]))|(?P<simplevers>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)")
 
 const maxConcurrent = 2 // The max amount of goroutines the CreateEdgesConcurrent function can spawn
 
@@ -182,7 +182,7 @@ func VisualizationNodeInfo(iDToNodeInfo map[int64]NodeInfo, graph *simple.Direct
 // TODO: add documentation on how we use semver for edges
 // TODO: Discuss removing pointers from maps since they are reference types without the need of using * : https://stackoverflow.com/questions/40680981/are-maps-passed-by-value-or-by-reference-in-go
 func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, hashToNodeId map[uint64]int64, nodeInfoMap map[int64]NodeInfo, hashToVersionMap map[uint32][]string, isMaven bool) {
-	r, _ := regexp.Compile("((?P<open>[\\(\\[])(?P<bothVer>((?P<firstVer>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)(?P<comma1>,)(?P<secondVer1>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?)|((?P<comma2>,)?(?P<secondVer2>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?))(?P<close>[\\)\\]]))|(?P<simplevers>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)")
+	// r, _ := regexp.Compile("((?P<open>[\\(\\[])(?P<bothVer>((?P<firstVer>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)(?P<comma1>,)(?P<secondVer1>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?)|((?P<comma2>,)?(?P<secondVer2>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?))(?P<close>[\\)\\]]))|(?P<simplevers>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)")
 	n := len(*inputList)
 	for id, packageInfo := range *inputList {
 		for version, dependencyInfo := range packageInfo.Versions {
@@ -230,59 +230,6 @@ func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, hashToNo
 			debug.FreeOSMemory()
 		}
 	}
-}
-
-func CreateEdgesConcurrent(graph *simple.DirectedGraph, inputList *[]PackageInfo, hashToNodeId map[uint64]int64, nodeInfoMap map[int64]NodeInfo, nameToVersionMap map[string][]string, isMaven bool) {
-	var graphMutex sync.RWMutex
-	var wg sync.WaitGroup
-	guard := make(chan uint8, maxConcurrent)
-
-	for _, packageInfo := range *inputList {
-		for version, dependencyInfo := range packageInfo.Versions {
-			for dependencyName, dependencyVersion := range dependencyInfo.Dependencies {
-				wg.Add(1) // Add one goroutine to wait group
-				go func(dependencyVersion string, isMaven bool, nameToVersionMap map[string][]string, dependencyName string, hashToNodeId map[uint64]int64, graph *simple.DirectedGraph, packageName string, packageVersion string, mut *sync.RWMutex) {
-					guard <- 1
-					defer wg.Done()
-					createEdgesForDependency(dependencyName, dependencyVersion, isMaven, nameToVersionMap, hashToNodeId, graph, packageName, packageVersion, mut)
-					<-guard
-				}(dependencyVersion, isMaven, nameToVersionMap, dependencyName, hashToNodeId, graph, packageInfo.Name, version, &graphMutex)
-
-			}
-		}
-	}
-
-	wg.Wait()
-
-}
-
-func createEdgesForDependency(dependencyName string, dependencyVersion string, isMaven bool, nameToVersionMap map[string][]string, hashToNodeId map[uint64]int64, graph *simple.DirectedGraph, packageName string, packageVersion string, graphMutex *sync.RWMutex) {
-	finaldep := dependencyVersion
-	if isMaven {
-		finaldep = parseMultipleMavenSemVers(dependencyVersion, mvnRegex)
-	}
-	constraint, err := semver.NewConstraint(finaldep)
-
-	if err != nil { // If the constraint doesn't work, just try an exact match
-		//log.Printf("Error: %s (with dependency %s - %s)\n", err, dependencyName, dependencyVersion)
-		for _, v := range nameToVersionMap[dependencyName] {
-			if dependencyVersion == v {
-				addEdge(graphMutex, dependencyName, v, hashToNodeId, graph, packageName, packageVersion)
-				break
-			}
-		}
-	} else {
-		for _, v := range nameToVersionMap[dependencyName] {
-			newVersion, err := semver.NewVersion(v)
-			if err != nil {
-				continue
-			}
-			if constraint.Check(newVersion) {
-				addEdge(graphMutex, dependencyName, v, hashToNodeId, graph, packageName, packageVersion)
-			}
-		}
-	}
-
 }
 
 func addEdge(graphMutex *sync.RWMutex, dependencyName string, v string, hashToNodeId map[uint64]int64, graph *simple.DirectedGraph, packageName string, packageVersion string) {
