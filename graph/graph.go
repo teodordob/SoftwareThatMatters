@@ -1,6 +1,7 @@
 package graph
 
 import (
+	"bufio"
 	"fmt"
 	"hash/crc32"
 	"hash/crc64"
@@ -37,10 +38,11 @@ type Doc struct {
 
 // NodeInfo is a type structure for nodes. Name and Version can be removed if we find we don't use them often enough
 type NodeInfo struct {
-	Timestamp string
-	Name      string
-	Version   string
-	id        int64
+	Timestamp     string
+	Name          string
+	Version       string
+	id            int64
+	IsApplication bool
 }
 
 type GraphEdge struct {
@@ -66,13 +68,14 @@ var mvnRegex *regexp.Regexp = regexp.MustCompile("((?P<open>[\\(\\[])(?P<bothVer
 const maxConcurrent = 2 // The max amount of goroutines the CreateEdgesConcurrent function can spawn
 
 // NewNodeInfo constructs a NodeInfo structure and automatically fills the stringID.
-func NewNodeInfo(id int64, name string, version string, timestamp string) *NodeInfo {
+func NewNodeInfo(id int64, name string, version string, timestamp string, isApplication bool) *NodeInfo {
 	return &NodeInfo{
 		id: id,
 
-		Name:      name,
-		Version:   version,
-		Timestamp: timestamp}
+		Name:          name,
+		Version:       version,
+		Timestamp:     timestamp,
+		IsApplication: isApplication}
 }
 
 func (nodeInfo NodeInfo) String() string {
@@ -90,7 +93,7 @@ func CreateStringIDToNodeInfoMap(packagesInfo *[]PackageInfo, graph *simple.Dire
 			// Delegate the work of creating a unique ID to Gonum
 			newNode := graph.NewNode()
 			newId := newNode.ID()
-			stringIDToNodeInfoMap[packageNameVersionString] = *NewNodeInfo(newId, packageInfo.Name, packageVersion, versionInfo.Timestamp)
+			stringIDToNodeInfoMap[packageNameVersionString] = *NewNodeInfo(newId, packageInfo.Name, packageVersion, versionInfo.Timestamp, false)
 			// idToNodeInfo[newId] =
 			graph.AddNode(newNode)
 		}
@@ -337,8 +340,6 @@ func translateMavenSemver(s string, reg *regexp.Regexp) string {
 		if i != 0 && name != "" {
 			result[name] = match[i]
 		}
-		//TODO: What is happening here?
-		//fmt.Printf("by name: %s %s\n", result["singur"])
 	}
 	if len(result["close"]) > 0 {
 		if len(result["secondVer2"]) > 0 {
@@ -403,7 +404,23 @@ func ParseJSON(inPath string) []PackageInfo {
 func CreateMaps(packageList *[]PackageInfo, graph *simple.DirectedGraph) (map[uint64]int64, map[int64]NodeInfo) {
 	hashToNodeId := make(map[uint64]int64, len(*packageList)*10)
 	idToNodeInfo := make(map[int64]NodeInfo, len(*packageList)*10)
+	f, err := os.Open("data/input/UsrBinAppsNames.txt")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+	scanner := bufio.NewScanner(f)
+	map1 := make(map[string]bool)
+	for scanner.Scan() {
+		// do something with a line
+		map1[scanner.Text()] = true
+	}
+
 	for _, packageInfo := range *packageList {
+		isApp := false
+		if map1[packageInfo.Name] == true || map1["python-"+packageInfo.Name] || map1["python3-"+packageInfo.Name] {
+			isApp = true
+		}
 		for packageVersion, versionInfo := range packageInfo.Versions {
 			stringID := fmt.Sprintf("%s-%s", packageInfo.Name, packageVersion)
 			hashed := hashStringId(stringID)
@@ -411,10 +428,17 @@ func CreateMaps(packageList *[]PackageInfo, graph *simple.DirectedGraph) (map[ui
 			newNode := graph.NewNode()
 			newId := newNode.ID()
 			hashToNodeId[hashed] = newId
-			idToNodeInfo[newId] = *NewNodeInfo(newId, packageInfo.Name, packageVersion, versionInfo.Timestamp)
+			idToNodeInfo[newId] = *NewNodeInfo(newId, packageInfo.Name, packageVersion, versionInfo.Timestamp, isApp)
 			graph.AddNode(newNode)
 		}
 	}
+	var arr []NodeInfo
+	for _, x := range idToNodeInfo {
+		if x.IsApplication {
+			arr = append(arr, x)
+		}
+	}
+	fmt.Println(arr)
 	return hashToNodeId, idToNodeInfo
 }
 

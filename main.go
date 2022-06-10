@@ -1,15 +1,12 @@
 package main
 
 import (
-	"runtime/debug"
-
-	_ "net/http/pprof"
-
 	"github.com/AJMBrands/SoftwareThatMatters/cmd"
+	_ "net/http/pprof"
 )
 
 func main() {
-	debug.SetGCPercent(10)
+	//debug.SetGCPercent(10)
 	//TODO: Move to graph.go; Integrate nicely with cli
 	// To use the cli: go run main.go start.
 	cmd.Execute()
@@ -21,8 +18,8 @@ func main() {
 
 	// wg.Add(1)
 
-	// graph1, _, idToNodeInfo, _ := graph.CreateGraph("data/input/processed-10k.json", false)
-
+	//graph1, _, _, _ := graph.CreateGraph("data/input/sample5.json", false)
+	//fmt.Println(graph1)
 	// pr := graph.PageRank(graph1)
 	// maxRank := 0.0
 	// var mostUsedId int64

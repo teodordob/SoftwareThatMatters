@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -84,6 +86,8 @@ func start() {
 				"Find all the possible dependencies of a package between two timestamps",
 				"Find the latest dependencies of a package between two timestamps",
 				"Find the most used package",
+				"Find the most used application",
+				"Find the xth most used applications",
 				"Quit",
 			},
 		}
@@ -134,6 +138,39 @@ func start() {
 			}
 			fmt.Printf("The highest-ranked node (%v) has rank %f \n", idToNodeInfo[mostUsedId], maxRank)
 		case 5:
+			fmt.Println("This should find the most used application")
+			pr := g.PageRank(graph)
+			maxRank := 0.0
+			var mostUsedId int64
+			for id, rank := range pr {
+				if rank > maxRank && idToNodeInfo[id].IsApplication {
+					maxRank = rank
+					mostUsedId = id
+				}
+			}
+			fmt.Printf("The highest-ranked node (%v) has rank %f \n", idToNodeInfo[mostUsedId], maxRank)
+		case 6:
+			fmt.Println("This should find the most used application")
+			input := generateAndRunInt("Please input the number of applications desired")
+			fmt.Println(input)
+			pr := g.PageRank(graph)
+
+			keys := make([]int64, 0, len(pr))
+			for key := range pr {
+				keys = append(keys, key)
+			}
+			sort.Slice(keys, func(i, j int) bool { return pr[keys[i]] > pr[keys[j]] })
+
+			nr := 0
+			for _, key := range keys {
+				if nr < input && idToNodeInfo[key].IsApplication {
+					fmt.Printf("The number (%d) node is (%v) and has rank %f \n", nr, idToNodeInfo[key], pr[key])
+					nr++
+				} else if nr >= input {
+					break
+				}
+			}
+		case 7:
 			fmt.Println("Stopping the program...")
 			stop = true
 		}
@@ -266,6 +303,32 @@ func generateAndRunPackageNamePrompt(message string, stringIDToNodeInfo map[int6
 	}
 
 	return packageID
+}
+
+func generateAndRunInt(message string) int {
+
+	validateInput := func(input interface{}) error {
+		str, _ := input.(string)
+		nr, err := strconv.Atoi(str)
+		if err != nil {
+
+			return errors.New("input is not an integer")
+		}
+		if nr <= 0 {
+			return errors.New("input cannot be lower or equal to 0")
+		}
+		return nil
+	}
+	intPrompt := &survey.Input{
+		Message: message,
+	}
+	var ans int
+	err := survey.AskOne(intPrompt, &ans, survey.WithValidator(validateInput))
+
+	if err != nil {
+		panic(err)
+	}
+	return ans
 }
 
 func init() {
