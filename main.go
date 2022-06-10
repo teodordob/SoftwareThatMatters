@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	debug.SetGCPercent(10)
+	debug.SetGCPercent(1)
 	//TODO: Move to graph.go; Integrate nicely with cli
 	// To use the cli: go run main.go start.
 	cmd.Execute()
