@@ -404,7 +404,11 @@ func CreateGraph(inputPath string, isUsingMaven bool) (*simple.DirectedGraph, ma
 	fmt.Println("Done!")
 	// TODO: This might cause some issues but for now it saves it quite a lot of memory
 	runtime.GC()
-	fmt.Printf("Nodes: %d, Edges: %d\n", graph.Nodes().Len(), graph.Edges().Len())
+	numNodes := graph.Nodes().Len()
+	runtime.GC()
+	numEdges := graph.Nodes().Len()
+	runtime.GC()
+	fmt.Printf("Nodes: %d, Edges: %d\n", numNodes, numEdges)
 	return graph, hashToNodeId, idToNodeInfo, hashToVersions
 }
 
