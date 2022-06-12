@@ -189,7 +189,7 @@ func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, hashToNo
 				finaldep := dependencyVersion
 				constraint, err := semver.NewConstraint(finaldep)
 				if err != nil {
-					log.Println(err)
+					//log.Println(err)
 					continue
 				}
 				for _, v := range LookupVersions(dependencyName, hashToVersionMap) {
