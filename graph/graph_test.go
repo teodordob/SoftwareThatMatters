@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"gonum.org/v1/gonum/graph/simple"
+	"github.com/AJMBrands/SoftwareThatMatters/customgraph"
 )
 
 // TODO: Test ParseJSON
@@ -32,7 +32,7 @@ func TestNodeCreationBasicGraph(t *testing.T) {
 		},
 	}
 	//dummyMap := make(map[int64]NodeInfo)
-	graph := simple.NewDirectedGraph()
+	graph := customgraph.NewDirectedGraph()
 	hashMap, nodeMap, _ := CreateMaps(&simplePackageInfo, graph)
 	hashToVersionMap := CreateHashedVersionMap(&simplePackageInfo)
 	CreateEdges(graph, &simplePackageInfo, hashMap, nodeMap, hashToVersionMap, false)
@@ -129,7 +129,7 @@ func TestNodeCreationMediumComplexity(t *testing.T) {
 	}
 
 	//dummyMap := make(map[int64]NodeInfo)
-	graph := simple.NewDirectedGraph()
+	graph := customgraph.NewDirectedGraph()
 	hashMap, nodeMap, _ := CreateMaps(&mediumPackageInfo, graph)
 	hashToVersionMap := CreateHashedVersionMap(&mediumPackageInfo)
 	CreateEdges(graph, &mediumPackageInfo, hashMap, nodeMap, hashToVersionMap, false)
@@ -219,7 +219,7 @@ func TestCreateEdgesBasicGraph(t *testing.T) {
 		},
 	}
 	//dummyMap := make(map[int64]NodeInfo)
-	graph := simple.NewDirectedGraph()
+	graph := customgraph.NewDirectedGraph()
 	hashMap, nodeMap, _ := CreateMaps(&simplePackagesInfo, graph)
 	hashToVersionMap := CreateHashedVersionMap(&simplePackagesInfo)
 	CreateEdges(graph, &simplePackagesInfo, hashMap, nodeMap, hashToVersionMap, false)
@@ -292,7 +292,7 @@ func TestCreateEdgesMediumComplexityGraph(t *testing.T) {
 		},
 	}
 	//dummyMap := make(map[int64]NodeInfo)
-	graph := simple.NewDirectedGraph()
+	graph := customgraph.NewDirectedGraph()
 	hashMap, nodeMap, _ := CreateMaps(&packagesInfo, graph)
 	hashToVersionMap := CreateHashedVersionMap(&packagesInfo)
 	CreateEdges(graph, &packagesInfo, hashMap, nodeMap, hashToVersionMap, false)

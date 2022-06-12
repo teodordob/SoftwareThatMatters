@@ -12,9 +12,9 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 
+	"github.com/AJMBrands/SoftwareThatMatters/customgraph"
 	g "github.com/AJMBrands/SoftwareThatMatters/graph"
 	"github.com/spf13/cobra"
-	"gonum.org/v1/gonum/graph/simple"
 )
 
 // startCmd represents the start command
@@ -199,7 +199,7 @@ func findAllPackagesBetweenTwoTimestamps(idToNodeInfo map[int64]g.NodeInfo) *[]g
 
 }
 
-func findAllDependenciesOfAPackageBetweenTwoTimestamps(graph *simple.DirectedGraph, hashMap map[uint64]int64, nodeMap map[int64]g.NodeInfo) *[]g.NodeInfo {
+func findAllDependenciesOfAPackageBetweenTwoTimestamps(graph *customgraph.DirectedGraph, hashMap map[uint64]int64, nodeMap map[int64]g.NodeInfo) *[]g.NodeInfo {
 	beginTime := generateAndRunDatePrompt("Please input the beginning date of the interval (DD-MM-YYYY)")
 	endTime := generateAndRunDatePrompt("Please input the end date of the interval (DD-MM-YYYY)")
 	nodeStringId := generateAndRunPackageNamePrompt("Please select the name and the version of the package", nodeMap)
@@ -207,7 +207,7 @@ func findAllDependenciesOfAPackageBetweenTwoTimestamps(graph *simple.DirectedGra
 	return g.GetTransitiveDependenciesNode(graph, nodeMap, hashMap, nodeStringId)
 }
 
-func findLatestDependenciesOfAPackageBetweenTwotimestamps(graph *simple.DirectedGraph, hashMap map[uint64]int64, nodeMap map[int64]g.NodeInfo) *[]g.NodeInfo {
+func findLatestDependenciesOfAPackageBetweenTwotimestamps(graph *customgraph.DirectedGraph, hashMap map[uint64]int64, nodeMap map[int64]g.NodeInfo) *[]g.NodeInfo {
 	beginTime := generateAndRunDatePrompt("Please input the beginning date of the interval (DD-MM-YYYY)")
 	endTime := generateAndRunDatePrompt("Please input the end date of the interval (DD-MM-YYYY)")
 	nodeStringId := generateAndRunPackageNamePrompt("Please select the name and the version of the package", nodeMap)
