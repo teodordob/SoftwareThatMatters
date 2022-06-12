@@ -180,9 +180,9 @@ func VisualizationNodeInfo(iDToNodeInfo map[int64]NodeInfo, graph *simple.Direct
 // a map of names to versions and creates directed edges between the dependent library and its dependencies.
 // TODO: add documentation on how we use semver for edges
 // TODO: Discuss removing pointers from maps since they are reference types without the need of using * : https://stackoverflow.com/questions/40680981/are-maps-passed-by-value-or-by-reference-in-go
-func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, hashToNodeId map[uint64]int64, nodeInfoMap map[int64]NodeInfo, hashToVersionMap map[uint32][]string, isMaven bool) (int, int) {
+func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, hashToNodeId map[uint64]int64, nodeInfoMap map[int64]NodeInfo, hashToVersionMap map[uint32][]string, isMaven bool) int {
 	// r, _ := regexp.Compile("((?P<open>[\\(\\[])(?P<bothVer>((?P<firstVer>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)(?P<comma1>,)(?P<secondVer1>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?)|((?P<comma2>,)?(?P<secondVer2>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?))(?P<close>[\\)\\]]))|(?P<simplevers>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)")
-	numNodes := len(*inputList)
+	n := len(*inputList)
 	numEdges := 0
 	for id, packageInfo := range *inputList {
 		for version, dependencyInfo := range packageInfo.Versions {
@@ -219,13 +219,13 @@ func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, hashToNo
 			}
 		}
 		fmt.Printf("\u001b[1A \u001b[2K \r") // Clear the last line
-		fmt.Printf("%.2f%% done (%d / %d packages connected to their dependencies)\n", float32(id)/float32(numNodes)*100, id, numNodes)
+		fmt.Printf("%.2f%% done (%d / %d packages connected to their dependencies)\n", float32(id)/float32(n)*100, id, n)
 
 		if id%5000 == 0 {
 			runtime.GC()
 		}
 	}
-	return numNodes, numEdges
+	return numEdges
 }
 
 func addEdge(graphMutex *sync.RWMutex, dependencyName string, v string, hashToNodeId map[uint64]int64, graph *simple.DirectedGraph, packageName string, packageVersion string) {
@@ -263,9 +263,10 @@ func ParseJSON(inPath string) []PackageInfo {
 	return result.Pkgs
 }
 
-func CreateMaps(packageList *[]PackageInfo, graph *simple.DirectedGraph) (map[uint64]int64, map[int64]NodeInfo) {
+func CreateMaps(packageList *[]PackageInfo, graph *simple.DirectedGraph) (map[uint64]int64, map[int64]NodeInfo, int) {
 	hashToNodeId := make(map[uint64]int64, len(*packageList)*10)
 	idToNodeInfo := make(map[int64]NodeInfo, len(*packageList)*10)
+	numNodes := 0
 	for _, packageInfo := range *packageList {
 		for packageVersion, versionInfo := range packageInfo.Versions {
 			stringID := fmt.Sprintf("%s-%s", packageInfo.Name, packageVersion)
@@ -276,9 +277,10 @@ func CreateMaps(packageList *[]PackageInfo, graph *simple.DirectedGraph) (map[ui
 			hashToNodeId[hashed] = newId
 			idToNodeInfo[newId] = *NewNodeInfo(newId, packageInfo.Name, packageVersion, versionInfo.Timestamp)
 			graph.AddNode(newNode)
+			numNodes++
 		}
 	}
-	return hashToNodeId, idToNodeInfo
+	return hashToNodeId, idToNodeInfo, numNodes
 }
 
 func hashStringId(stringID string) uint64 {
@@ -310,12 +312,12 @@ func CreateGraph(inputPath string, isUsingMaven bool) (*simple.DirectedGraph, ma
 	// stringIDToNodeInfo := CreateStringIDToNodeInfoMap(packagesList, graph)
 	// idToNodeInfo := CreateNodeIdToPackageMap(stringIDToNodeInfo)
 	fmt.Println("Adding nodes and creating indices")
-	hashToNodeId, idToNodeInfo := CreateMaps(&packagesList, graph)
+	hashToNodeId, idToNodeInfo, numNodes := CreateMaps(&packagesList, graph)
 	// nameToVersions := CreateNameToVersionMap(&packagesList)
 	hashToVersions := CreateHashedVersionMap(&packagesList)
 	fmt.Println("Creating edges")
 	fmt.Println()
-	numNodes, numEdges := CreateEdges(graph, &packagesList, hashToNodeId, idToNodeInfo, hashToVersions, isUsingMaven)
+	numEdges := CreateEdges(graph, &packagesList, hashToNodeId, idToNodeInfo, hashToVersions, isUsingMaven)
 	//CreateEdgesConcurrent(graph, &packagesList, hashToNodeId, idToNodeInfo, nameToVersions, isUsingMaven)
 	fmt.Println("Done!")
 	// TODO: This might cause some issues but for now it saves it quite a lot of memory
