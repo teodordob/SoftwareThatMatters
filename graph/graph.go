@@ -180,16 +180,17 @@ func VisualizationNodeInfo(iDToNodeInfo map[int64]NodeInfo, graph *simple.Direct
 // a map of names to versions and creates directed edges between the dependent library and its dependencies.
 // TODO: add documentation on how we use semver for edges
 // TODO: Discuss removing pointers from maps since they are reference types without the need of using * : https://stackoverflow.com/questions/40680981/are-maps-passed-by-value-or-by-reference-in-go
-func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, hashToNodeId map[uint64]int64, nodeInfoMap map[int64]NodeInfo, hashToVersionMap map[uint32][]string, isMaven bool) {
+func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, hashToNodeId map[uint64]int64, nodeInfoMap map[int64]NodeInfo, hashToVersionMap map[uint32][]string, isMaven bool) (int, int) {
 	// r, _ := regexp.Compile("((?P<open>[\\(\\[])(?P<bothVer>((?P<firstVer>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)(?P<comma1>,)(?P<secondVer1>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?)|((?P<comma2>,)?(?P<secondVer2>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?))(?P<close>[\\)\\]]))|(?P<simplevers>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)")
-	n := len(*inputList)
+	numNodes := len(*inputList)
+	numEdges := 0
 	for id, packageInfo := range *inputList {
 		for version, dependencyInfo := range packageInfo.Versions {
 			for dependencyName, dependencyVersion := range dependencyInfo.Dependencies {
 				finaldep := dependencyVersion
 				constraint, err := semver.NewConstraint(finaldep)
 				if err != nil {
-					//log.Println(err)
+					log.Println(err)
 					continue
 				}
 				for _, v := range LookupVersions(dependencyName, hashToVersionMap) {
@@ -210,6 +211,7 @@ func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, hashToNo
 						// Ensure that we do not create edges to self because some packages do that...
 						if dependencyGoId != packageGoId {
 							graph.SetEdge(GraphEdge{FId: packageGoId, TId: dependencyGoId, g: graph})
+							numEdges++
 						}
 
 					}
@@ -217,12 +219,13 @@ func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, hashToNo
 			}
 		}
 		fmt.Printf("\u001b[1A \u001b[2K \r") // Clear the last line
-		fmt.Printf("%.2f%% done (%d / %d packages connected to their dependencies)\n", float32(id)/float32(n)*100, id, n)
+		fmt.Printf("%.2f%% done (%d / %d packages connected to their dependencies)\n", float32(id)/float32(numNodes)*100, id, numNodes)
 
 		if id%5000 == 0 {
 			runtime.GC()
 		}
 	}
+	return numNodes, numEdges
 }
 
 func addEdge(graphMutex *sync.RWMutex, dependencyName string, v string, hashToNodeId map[uint64]int64, graph *simple.DirectedGraph, packageName string, packageVersion string) {
@@ -312,15 +315,10 @@ func CreateGraph(inputPath string, isUsingMaven bool) (*simple.DirectedGraph, ma
 	hashToVersions := CreateHashedVersionMap(&packagesList)
 	fmt.Println("Creating edges")
 	fmt.Println()
-	CreateEdges(graph, &packagesList, hashToNodeId, idToNodeInfo, hashToVersions, isUsingMaven)
+	numNodes, numEdges := CreateEdges(graph, &packagesList, hashToNodeId, idToNodeInfo, hashToVersions, isUsingMaven)
 	//CreateEdgesConcurrent(graph, &packagesList, hashToNodeId, idToNodeInfo, nameToVersions, isUsingMaven)
 	fmt.Println("Done!")
 	// TODO: This might cause some issues but for now it saves it quite a lot of memory
-	runtime.GC()
-	numNodes := graph.Nodes().Len()
-	runtime.GC()
-	numEdges := graph.Edges().Len()
-	runtime.GC()
 	fmt.Printf("Nodes: %d, Edges: %d\n", numNodes, numEdges)
 	return graph, hashToNodeId, idToNodeInfo, hashToVersions
 }
