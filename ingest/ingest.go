@@ -9,8 +9,8 @@ import (
 
 type Metadata struct {
 	XMLName    xml.Name   `xml:"metadata"`
-	GroupId    string     `xml:"groupid"`
-	ArtifactId string     `xml:"artifactid"`
+	GroupId    string     `xml:"groupId"`
+	ArtifactId string     `xml:"artifactId"`
 	Versioning Versioning `xml:"versioning"`
 }
 
