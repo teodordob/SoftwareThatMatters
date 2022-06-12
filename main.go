@@ -1,17 +1,16 @@
 package main
 
 import (
+	"github.com/AJMBrands/SoftwareThatMatters/ingest"
 	_ "net/http/pprof"
-	"runtime/debug"
-
-	"github.com/AJMBrands/SoftwareThatMatters/cmd"
 )
 
 func main() {
-	debug.SetGCPercent(10)
-	//TODO: Move to graph.go; Integrate nicely with cli
-	// To use the cli: go run main.go start.
-	cmd.Execute()
+	ingest.IngestData()
+	//debug.SetGCPercent(10)
+	////TODO: Move to graph.go; Integrate nicely with cli
+	//// To use the cli: go run main.go start.
+	//cmd.Execute()
 	// var wg sync.WaitGroup
 
 	// go func() {
