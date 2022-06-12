@@ -3,18 +3,21 @@ package graph
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/AJMBrands/SoftwareThatMatters/customgraph"
 )
 
 // TODO: Test ParseJSON
 func TestNodeCreationBasicGraph(t *testing.T) {
+	t1, _ := time.Parse(time.RFC3339, "2021-04-22T20:15:37")
+	t2, _ := time.Parse(time.RFC3339, "2021-04-01T20:15:37")
 	simplePackageInfo := []PackageInfo{
 		{
 			Name: "B",
 			Versions: map[string]VersionInfo{
 				"1.0.0": {
-					Timestamp: "2021-04-22T20:15:37",
+					Timestamp: t1,
 					Dependencies: map[string]string{
 						"A": "1.0.0",
 					},
@@ -25,7 +28,7 @@ func TestNodeCreationBasicGraph(t *testing.T) {
 			Name: "A",
 			Versions: map[string]VersionInfo{
 				"1.0.0": {
-					Timestamp:    "2021-04-01T20:15:37",
+					Timestamp:    t2,
 					Dependencies: map[string]string{},
 				},
 			},
@@ -68,11 +71,13 @@ func TestNodeCreationBasicGraph(t *testing.T) {
 }
 
 func TestNodeCreationMediumComplexity(t *testing.T) {
+	t1, _ := time.Parse(time.RFC3339, "2021-04-22T20:15:37")
+
 	packageB := PackageInfo{
 		Name: "B",
 		Versions: map[string]VersionInfo{
 			"1.0.0": {
-				Timestamp: "2021-04-22T20:15:37",
+				Timestamp: t1,
 				Dependencies: map[string]string{
 					"A": ">=0.9.0",
 					"C": "1.0.0",
@@ -80,44 +85,51 @@ func TestNodeCreationMediumComplexity(t *testing.T) {
 			},
 		},
 	}
+	t2, _ := time.Parse(time.RFC3339, "2022-04-22T20:13:34")
+	t3, _ := time.Parse(time.RFC3339, "2022-05-28T21:22:23")
 	packageC := PackageInfo{
 		Name: "C",
 		Versions: map[string]VersionInfo{
 			"1.0.0": {
-				Timestamp: "2022-04-22T20:13:34",
+				Timestamp: t2,
 				Dependencies: map[string]string{
 					"A": "<1.0.0",
 				},
 			},
 			"2.0.0": {
-				Timestamp: "2022-05-28T21:22:23",
+				Timestamp: t3,
 				Dependencies: map[string]string{
 					"A": "<2.0.0",
 				},
 			},
 		},
 	}
+	t4, _ := time.Parse(time.RFC3339, "2020-04-01T20:15:37")
+	t5, _ := time.Parse(time.RFC3339, "2020-05-01T20:15:37")
+	t6, _ := time.Parse(time.RFC3339, "2021-06-01T20:15:37")
+	t7, _ := time.Parse(time.RFC3339, "2021-06-01T20:15:37")
+	t8, _ := time.Parse(time.RFC3339, "2021-06-01T20:15:48")
 	packageA := PackageInfo{
 		Name: "A",
 		Versions: map[string]VersionInfo{
 			"0.9.0": {
-				Timestamp:    "2020-04-01T20:15:37",
+				Timestamp:    t4,
 				Dependencies: map[string]string{},
 			},
 			"1.0.0-rc.1": {
-				Timestamp:    "2020-05-01T20:15:37",
+				Timestamp:    t5,
 				Dependencies: map[string]string{},
 			},
 			"1.0.0": {
-				Timestamp:    "2021-06-01T20:15:37",
+				Timestamp:    t6,
 				Dependencies: map[string]string{},
 			},
 			"1.1.0": {
-				Timestamp:    "2021-07-01T20:15:37",
+				Timestamp:    t7,
 				Dependencies: map[string]string{},
 			},
 			"2.0.0": {
-				Timestamp:    "2022-01-04T04:02:00",
+				Timestamp:    t8,
 				Dependencies: map[string]string{},
 			},
 		},
@@ -196,12 +208,14 @@ func createTestNodeInfo(pi PackageInfo, version string) NodeInfo {
 }
 
 func TestCreateEdgesBasicGraph(t *testing.T) {
+	t1, _ := time.Parse(time.RFC3339, "2021-04-22T20:15:37")
+	t2, _ := time.Parse(time.RFC3339, "2021-04-01T20:15:37")
 	simplePackagesInfo := []PackageInfo{
 		{
 			Name: "B",
 			Versions: map[string]VersionInfo{
 				"1.0.0": {
-					Timestamp: "2021-04-22T20:15:37",
+					Timestamp: t1,
 					Dependencies: map[string]string{
 						"A": "1.0.0",
 					},
@@ -212,7 +226,7 @@ func TestCreateEdgesBasicGraph(t *testing.T) {
 			Name: "A",
 			Versions: map[string]VersionInfo{
 				"1.0.0": {
-					Timestamp:    "2021-04-01T20:15:37",
+					Timestamp:    t2,
 					Dependencies: map[string]string{},
 				},
 			},
@@ -245,12 +259,14 @@ func TestCreateEdgesBasicGraph(t *testing.T) {
 }
 
 func TestCreateEdgesMediumComplexityGraph(t *testing.T) {
+	t1, _ := time.Parse(time.RFC3339, "2021-07-01T20:15:37")
+	t2, _ := time.Parse(time.RFC3339, "2022-04-22T20:13:34")
 	packagesInfo := []PackageInfo{
 		{
 			Name: "B",
 			Versions: map[string]VersionInfo{
 				"1.0.0": {
-					Timestamp: "2021-04-22T20:15:37",
+					Timestamp: t1,
 					Dependencies: map[string]string{
 						"A": "> 0.9.0",
 						"C": "1.0.0",
@@ -262,7 +278,7 @@ func TestCreateEdgesMediumComplexityGraph(t *testing.T) {
 			Name: "C",
 			Versions: map[string]VersionInfo{
 				"1.0.0": {
-					Timestamp: "2022-04-22T20:13:34",
+					Timestamp: t2,
 					Dependencies: map[string]string{
 						"A": "< 1.0.0",
 					},
@@ -273,19 +289,19 @@ func TestCreateEdgesMediumComplexityGraph(t *testing.T) {
 			Name: "A",
 			Versions: map[string]VersionInfo{
 				"0.9.0": {
-					Timestamp:    "2020-04-01T20:15:37",
+					Timestamp:    t1,
 					Dependencies: map[string]string{},
 				},
 				"1.0.0-rc.1": {
-					Timestamp:    "2020-05-01T20:15:37",
+					Timestamp:    t1,
 					Dependencies: map[string]string{},
 				},
 				"1.0.0": {
-					Timestamp:    "2021-06-01T20:15:37",
+					Timestamp:    t1,
 					Dependencies: map[string]string{},
 				},
 				"1.1.0": {
-					Timestamp:    "2021-07-01T20:15:37",
+					Timestamp:    t1,
 					Dependencies: map[string]string{},
 				},
 			},

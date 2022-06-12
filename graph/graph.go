@@ -22,7 +22,7 @@ import (
 
 type VersionInfo struct {
 	Dependencies map[string]string `json:"dependencies"`
-	Timestamp    string            `json:"timestamp"`
+	Timestamp    time.Time         `json:"timestamp"`
 }
 
 type PackageInfo struct {
@@ -36,7 +36,7 @@ type Doc struct {
 
 // NodeInfo is a type structure for nodes. Name and Version can be removed if we find we don't use them often enough
 type NodeInfo struct {
-	Timestamp string
+	Timestamp time.Time
 	Name      string
 	Version   string
 	id        int64
@@ -45,7 +45,7 @@ type NodeInfo struct {
 var crcTable *crc64.Table = crc64.MakeTable(crc64.ISO)
 
 // NewNodeInfo constructs a NodeInfo structure and automatically fills the stringID.
-func NewNodeInfo(id int64, name string, version string, timestamp string) *NodeInfo {
+func NewNodeInfo(id int64, name string, version string, timestamp time.Time) *NodeInfo {
 	return &NodeInfo{
 		id: id,
 
@@ -138,7 +138,7 @@ func VisualizationNodeInfo(iDToNodeInfo map[int64]NodeInfo, graph *simple.Direct
 
 	for _, element := range iDToNodeInfo {
 		//fmt.Println("Key:", key, "=>", "Element:", element.id)
-		fmt.Fprintf(file, fmt.Sprint(element.id)+lab+element.Name+` \n `+string(element.Version)+` \n `+string(element.Timestamp)+"\""+"];\n")
+		fmt.Fprintf(file, fmt.Sprint(element.id)+lab+element.Name+` \n `+string(element.Version)+` \n `+element.Timestamp.String()+"\""+"];\n")
 
 	}
 
@@ -318,7 +318,7 @@ func initializeTraversal(g *customgraph.DirectedGraph, nodeMap map[int64]NodeInf
 	for nodes.Next() { // Initialize withinInterval data structure
 		n := nodes.Node()
 		id := n.ID()
-		publishTime, _ := time.Parse(time.RFC3339, nodeMap[id].Timestamp)
+		publishTime := nodeMap[id].Timestamp
 		if InInterval(publishTime, beginTime, endTime) {
 			withinInterval[id] = true
 		}
@@ -331,8 +331,8 @@ func initializeTraversal(g *customgraph.DirectedGraph, nodeMap map[int64]NodeInf
 			fromId := e.From().ID()
 			toId := e.To().ID()
 			if withinInterval[toId] {
-				fromTime, _ := time.Parse(time.RFC3339, nodeMap[fromId].Timestamp) // The dependent node's time stamp
-				toTime, _ := time.Parse(time.RFC3339, nodeMap[toId].Timestamp)     // The dependency node's time stamp
+				fromTime := nodeMap[fromId].Timestamp // The dependent node's time stamp
+				toTime := nodeMap[toId].Timestamp     // The dependency node's time stamp
 				if traverse = fromTime.After(toTime); traverse {
 					connected = append(connected, &e)
 				} // If the dependency was released before the parent node, add this edge to the connected nodes
@@ -467,16 +467,10 @@ func GetLatestTransitiveDependenciesNode(g *customgraph.DirectedGraph, nodeMap m
 		}
 
 		hash := hashPackageName(current.Name)
-		currentDate, err := time.Parse(time.RFC3339, current.Timestamp)
-		if err != nil {
-			continue
-		}
+		currentDate := current.Timestamp
 		if latest, ok := newestPackageVersion[hash]; ok {
-			latestDate, err := time.Parse(time.RFC3339, latest.Timestamp)
-			if err != nil {
-				fmt.Println(err)
-				continue
-			} else if currentDate.After(latestDate) { // If the key exists, and current date is later than the one stored
+			latestDate := latest.Timestamp
+			if currentDate.After(latestDate) { // If the key exists, and current date is later than the one stored
 				newestPackageVersion[hash] = current // Set to the current package
 			} else if currentDate.Equal(latestDate) { // If the dates are somehow equal, compare version numbers
 				currentversion, _ := semver.NewVersion(current.Version)
@@ -516,11 +510,11 @@ func FilterLatestDepsGraph(g *customgraph.DirectedGraph, nodeMap map[int64]NodeI
 	v := traverse.DepthFirst{
 		Visit: func(n graph.Node) {
 			current := nodeMap[n.ID()]
-			currentDate, _ := time.Parse(time.RFC3339, current.Timestamp)
+			currentDate := current.Timestamp
 			hash := hashPackageName(current.Name)
 
 			if latest, ok := newestPackageVersion[hash]; ok {
-				latestDate, _ := time.Parse(time.RFC3339, latest.Timestamp)
+				latestDate := latest.Timestamp
 				if currentDate.After(latestDate) { // If the key exists, and current date is later than the one stored
 					newestPackageVersion[hash] = current // Set to the current package
 				} else if currentDate.Equal(latestDate) { // If the dates are somehow equal, compare version numbers

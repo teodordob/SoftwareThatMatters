@@ -36,8 +36,6 @@ func easyjson2419208eDecodeGithubComAJMBrandsSoftwareThatMattersGraph(in *jlexer
 			continue
 		}
 		switch key {
-		case "timestamp":
-			out.Timestamp = string(in.String())
 		case "dependencies":
 			if in.IsNull() {
 				in.Skip()
@@ -54,12 +52,12 @@ func easyjson2419208eDecodeGithubComAJMBrandsSoftwareThatMattersGraph(in *jlexer
 				}
 				in.Delim('}')
 			}
+		case "timestamp":
+			if data := in.Raw(); in.Ok() {
+				in.AddError((out.Timestamp).UnmarshalJSON(data))
+			}
 		default:
-			in.AddError(&jlexer.LexerError{
-				Offset: in.GetPos(),
-				Reason: "unknown field",
-				Data:   key,
-			})
+			in.SkipRecursive()
 		}
 		in.WantComma()
 	}
@@ -73,13 +71,8 @@ func easyjson2419208eEncodeGithubComAJMBrandsSoftwareThatMattersGraph(out *jwrit
 	first := true
 	_ = first
 	{
-		const prefix string = ",\"timestamp\":"
-		out.RawString(prefix[1:])
-		out.String(string(in.Timestamp))
-	}
-	{
 		const prefix string = ",\"dependencies\":"
-		out.RawString(prefix)
+		out.RawString(prefix[1:])
 		if in.Dependencies == nil && (out.Flags&jwriter.NilMapAsEmpty) == 0 {
 			out.RawString(`null`)
 		} else {
@@ -97,6 +90,11 @@ func easyjson2419208eEncodeGithubComAJMBrandsSoftwareThatMattersGraph(out *jwrit
 			}
 			out.RawByte('}')
 		}
+	}
+	{
+		const prefix string = ",\"timestamp\":"
+		out.RawString(prefix)
+		out.Raw((in.Timestamp).MarshalJSON())
 	}
 	out.RawByte('}')
 }
@@ -143,8 +141,6 @@ func easyjson2419208eDecodeGithubComAJMBrandsSoftwareThatMattersGraph1(in *jlexe
 			continue
 		}
 		switch key {
-		case "name":
-			out.Name = string(in.String())
 		case "versions":
 			if in.IsNull() {
 				in.Skip()
@@ -161,12 +157,10 @@ func easyjson2419208eDecodeGithubComAJMBrandsSoftwareThatMattersGraph1(in *jlexe
 				}
 				in.Delim('}')
 			}
+		case "name":
+			out.Name = string(in.String())
 		default:
-			in.AddError(&jlexer.LexerError{
-				Offset: in.GetPos(),
-				Reason: "unknown field",
-				Data:   key,
-			})
+			in.SkipRecursive()
 		}
 		in.WantComma()
 	}
@@ -180,13 +174,8 @@ func easyjson2419208eEncodeGithubComAJMBrandsSoftwareThatMattersGraph1(out *jwri
 	first := true
 	_ = first
 	{
-		const prefix string = ",\"name\":"
-		out.RawString(prefix[1:])
-		out.String(string(in.Name))
-	}
-	{
 		const prefix string = ",\"versions\":"
-		out.RawString(prefix)
+		out.RawString(prefix[1:])
 		if in.Versions == nil && (out.Flags&jwriter.NilMapAsEmpty) == 0 {
 			out.RawString(`null`)
 		} else {
@@ -204,6 +193,11 @@ func easyjson2419208eEncodeGithubComAJMBrandsSoftwareThatMattersGraph1(out *jwri
 			}
 			out.RawByte('}')
 		}
+	}
+	{
+		const prefix string = ",\"name\":"
+		out.RawString(prefix)
+		out.String(string(in.Name))
 	}
 	out.RawByte('}')
 }
@@ -250,18 +244,16 @@ func easyjson2419208eDecodeGithubComAJMBrandsSoftwareThatMattersGraph2(in *jlexe
 			continue
 		}
 		switch key {
+		case "Timestamp":
+			if data := in.Raw(); in.Ok() {
+				in.AddError((out.Timestamp).UnmarshalJSON(data))
+			}
 		case "Name":
 			out.Name = string(in.String())
 		case "Version":
 			out.Version = string(in.String())
-		case "Timestamp":
-			out.Timestamp = string(in.String())
 		default:
-			in.AddError(&jlexer.LexerError{
-				Offset: in.GetPos(),
-				Reason: "unknown field",
-				Data:   key,
-			})
+			in.SkipRecursive()
 		}
 		in.WantComma()
 	}
@@ -275,19 +267,19 @@ func easyjson2419208eEncodeGithubComAJMBrandsSoftwareThatMattersGraph2(out *jwri
 	first := true
 	_ = first
 	{
-		const prefix string = ",\"Name\":"
+		const prefix string = ",\"Timestamp\":"
 		out.RawString(prefix[1:])
+		out.Raw((in.Timestamp).MarshalJSON())
+	}
+	{
+		const prefix string = ",\"Name\":"
+		out.RawString(prefix)
 		out.String(string(in.Name))
 	}
 	{
 		const prefix string = ",\"Version\":"
 		out.RawString(prefix)
 		out.String(string(in.Version))
-	}
-	{
-		const prefix string = ",\"Timestamp\":"
-		out.RawString(prefix)
-		out.String(string(in.Timestamp))
 	}
 	out.RawByte('}')
 }
@@ -358,11 +350,7 @@ func easyjson2419208eDecodeGithubComAJMBrandsSoftwareThatMattersGraph3(in *jlexe
 				in.Delim(']')
 			}
 		default:
-			in.AddError(&jlexer.LexerError{
-				Offset: in.GetPos(),
-				Reason: "unknown field",
-				Data:   key,
-			})
+			in.SkipRecursive()
 		}
 		in.WantComma()
 	}

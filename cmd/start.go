@@ -185,11 +185,7 @@ func findAllPackagesBetweenTwoTimestamps(idToNodeInfo map[int64]g.NodeInfo) *[]g
 
 	for _, node := range idToNodeInfo {
 		//TODO: We need a way of properly parsing multiple times
-		nodeTime, err := time.Parse(time.RFC3339, node.Timestamp)
-		if err != nil {
-			fmt.Println("There was an error parsing the timestamps in the nodes!")
-			panic(err)
-		}
+		nodeTime := node.Timestamp
 		if g.InInterval(nodeTime, beginTime, endTime) {
 			nodesInInterval = append(nodesInInterval, node)
 		}
