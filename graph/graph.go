@@ -198,10 +198,6 @@ func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, hashToNo
 				//c, err := semver2.ParseRange(dependencyVersion)
 				if err != nil {
 					continue
-					//fmt.Println("sunt aici")
-					//fmt.Println(finaldep)
-					////log.Fatal(finaldep)
-					//log.Fatal(err)
 				}
 				for _, v := range LookupVersions(dependencyName, hashToVersionMap) {
 					//newVersion, _ := semver2.Parse(v)
@@ -404,7 +400,7 @@ func ParseJSON(inPath string) []PackageInfo {
 func CreateMaps(packageList *[]PackageInfo, graph *simple.DirectedGraph) (map[uint64]int64, map[int64]NodeInfo) {
 	hashToNodeId := make(map[uint64]int64, len(*packageList)*10)
 	idToNodeInfo := make(map[int64]NodeInfo, len(*packageList)*10)
-	f, err := os.Open("data/input/UsrBinAppsNames.txt")
+	f, err := os.Open("data/input/final_answ.txt")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -432,13 +428,13 @@ func CreateMaps(packageList *[]PackageInfo, graph *simple.DirectedGraph) (map[ui
 			graph.AddNode(newNode)
 		}
 	}
-	var arr []NodeInfo
-	for _, x := range idToNodeInfo {
-		if x.IsApplication {
-			arr = append(arr, x)
-		}
-	}
-	fmt.Println(arr)
+	//var arr []NodeInfo
+	//for _, x := range idToNodeInfo {
+	//	if x.IsApplication {
+	//		arr = append(arr, x)
+	//	}
+	//}
+	//fmt.Println(arr)
 	return hashToNodeId, idToNodeInfo
 }
 

@@ -1,7 +1,8 @@
 package main
 
 import (
-	"github.com/AJMBrands/SoftwareThatMatters/cmd"
+	"fmt"
+	g "github.com/AJMBrands/SoftwareThatMatters/graph"
 	_ "net/http/pprof"
 )
 
@@ -9,7 +10,12 @@ func main() {
 	//debug.SetGCPercent(10)
 	//TODO: Move to graph.go; Integrate nicely with cli
 	// To use the cli: go run main.go start.
-	cmd.Execute()
+	//cmd.Execute()
+	v2 := g.ParseDebianVersion("1.3.4-1")
+	v1 := g.ParseDebianVersion("1:1.3.10-0.3")
+	constr := "= 1.3.4-1"
+	fmt.Println(g.CompareVersions(*v1, *v2))
+	fmt.Println(g.CheckConstraint(constr, *v2))
 	// var wg sync.WaitGroup
 
 	// go func() {

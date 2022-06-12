@@ -152,7 +152,7 @@ func start() {
 		case 6:
 			fmt.Println("This should find the most used application")
 			input := generateAndRunInt("Please input the number of applications desired")
-			fmt.Println(input)
+			g.FilterGraph(graph, idToNodeInfo, time.Now(), time.Now())
 			pr := g.PageRank(graph)
 
 			keys := make([]int64, 0, len(pr))
