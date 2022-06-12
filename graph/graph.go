@@ -188,13 +188,9 @@ func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, hashToNo
 			for dependencyName, dependencyVersion := range dependencyInfo.Dependencies {
 				finaldep := dependencyVersion
 				constraint, err := semver.NewConstraint(finaldep)
-				//c, err := semver2.ParseRange(dependencyVersion)
 				if err != nil {
+					log.Println(err)
 					continue
-					//fmt.Println("sunt aici")
-					//fmt.Println(finaldep)
-					////log.Fatal(finaldep)
-					//log.Fatal(err)
 				}
 				for _, v := range LookupVersions(dependencyName, hashToVersionMap) {
 					//newVersion, _ := semver2.Parse(v)
@@ -222,6 +218,10 @@ func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, hashToNo
 		}
 		fmt.Printf("\u001b[1A \u001b[2K \r") // Clear the last line
 		fmt.Printf("%.2f%% done (%d / %d packages connected to their dependencies)\n", float32(id)/float32(n)*100, id, n)
+
+		if id%5000 == 0 {
+			runtime.GC()
+		}
 	}
 }
 
