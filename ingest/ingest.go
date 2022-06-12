@@ -15,11 +15,16 @@ type Metadata struct {
 }
 
 type Versioning struct {
-	XMLName     xml.Name `xml:"versioning"`
-	Latest      string   `xml:"latest"`
-	Release     string   `xml:"release"`
-	Versions    []string `xml:"versions"`
-	LastUpdated string   `xml:"lastupdated"`
+	XMLName     xml.Name  `xml:"versioning"`
+	Latest      string    `xml:"latest"`
+	Release     string    `xml:"release"`
+	Versions    []Version `xml:"versions>version"`
+	LastUpdated string    `xml:"lastUpdated"`
+}
+
+type Version struct {
+	// XMLName xml.Name `xml:"version"`
+	Value string `xml:",chardata"`
 }
 
 func IngestData() {
