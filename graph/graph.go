@@ -231,6 +231,40 @@ func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, hashToNo
 	}
 }
 
+func CreateEdgesDebian(graph *simple.DirectedGraph, inputList *[]PackageInfo, hashToNodeId map[uint64]int64, nodeInfoMap map[int64]NodeInfo, hashToVersionMap map[uint32][]string, isMaven bool) {
+	n := len(*inputList)
+	for id, packageInfo := range *inputList {
+		for version, dependencyInfo := range packageInfo.Versions {
+			for dependencyName, dependencyVersion := range dependencyInfo.Dependencies {
+				finaldep := dependencyVersion
+				for _, v := range LookupVersions(dependencyName, hashToVersionMap) {
+					//newVersion, _ := semver2.Parse(v)
+					newVersion := ParseDebianVersion(v)
+
+					if CheckConstraint(finaldep, *newVersion) {
+						dependencyStringId := fmt.Sprintf("%s-%s", dependencyName, v)
+						dependencyGoId := LookupByStringId(dependencyStringId, hashToNodeId)
+
+						packageStringId := fmt.Sprintf("%s-%s", packageInfo.Name, version)
+						packageGoId := LookupByStringId(packageStringId, hashToNodeId)
+
+						// Ensure that we do not create edges to self because some packages do that...
+						if dependencyGoId != packageGoId {
+							graph.SetEdge(GraphEdge{FId: packageGoId, TId: dependencyGoId, g: graph})
+						}
+
+					}
+				}
+			}
+		}
+		fmt.Printf("\u001b[1A \u001b[2K \r") // Clear the last line
+		fmt.Printf("%.2f%% done (%d / %d packages connected to their dependencies)\n", float32(id)/float32(n)*100, id, n)
+		if id%5000 == 0 {
+			debug.FreeOSMemory()
+		}
+	}
+}
+
 func CreateEdgesConcurrent(graph *simple.DirectedGraph, inputList *[]PackageInfo, hashToNodeId map[uint64]int64, nodeInfoMap map[int64]NodeInfo, nameToVersionMap map[string][]string, isMaven bool) {
 	var graphMutex sync.RWMutex
 	var wg sync.WaitGroup
@@ -472,7 +506,7 @@ func CreateGraph(inputPath string, isUsingMaven bool) (*simple.DirectedGraph, ma
 	hashToVersions := CreateHashedVersionMap(&packagesList)
 	fmt.Println("Creating edges")
 	fmt.Println()
-	CreateEdges(graph, &packagesList, hashToNodeId, idToNodeInfo, hashToVersions, isUsingMaven)
+	CreateEdgesDebian(graph, &packagesList, hashToNodeId, idToNodeInfo, hashToVersions, isUsingMaven)
 	//CreateEdgesConcurrent(graph, &packagesList, hashToNodeId, idToNodeInfo, nameToVersions, isUsingMaven)
 	fmt.Println("Done!")
 	// TODO: This might cause some issues but for now it saves it quite a lot of memory

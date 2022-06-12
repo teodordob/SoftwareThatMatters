@@ -1,6 +1,7 @@
 package graph
 
 import (
+	"fmt"
 	"regexp"
 	"strconv"
 	"unicode/utf8"
@@ -29,11 +30,14 @@ func newDebianVersion(epoch int, upstreamVersion string, debianRevision string) 
 func ParseDebianVersion(input string) *DebianVersion {
 	match := versionRegex.FindStringSubmatch(input)
 	result := make(map[string]string)
+	if match == nil {
+		fmt.Println(input)
+	}
 	var epoch int
 	upstreamVersion := "0"
 	debianRevision := "0"
 	for i, name := range versionRegex.SubexpNames() {
-		if i != 0 && name != "" {
+		if i != 0 && name != "" && match != nil {
 			result[name] = match[i]
 		}
 	}
