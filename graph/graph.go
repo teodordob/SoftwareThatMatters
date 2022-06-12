@@ -434,7 +434,7 @@ func ParseJSON(inPath string) []PackageInfo {
 func CreateMaps(packageList *[]PackageInfo, graph *simple.DirectedGraph) (map[uint64]int64, map[int64]NodeInfo) {
 	hashToNodeId := make(map[uint64]int64, len(*packageList)*10)
 	idToNodeInfo := make(map[int64]NodeInfo, len(*packageList)*10)
-	f, err := os.Open("data/input/final_answ.txt")
+	f, err := os.Open("data/input/applications.txt")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -736,6 +736,51 @@ func FilterLatestDepsGraph(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, 
 					latestVersion, _ := semver.NewVersion(latest.Version)
 
 					if currentversion.GreaterThan(latestVersion) {
+						newestPackageVersion[hash] = current
+					}
+				}
+			} else { // If the key doesn't exist yet
+				newestPackageVersion[hash] = current
+			}
+		},
+	}
+
+	nodes := g.Nodes()
+	for nodes.Next() {
+		n := nodes.Node()
+		_ = v.Walk(g, n, nil)
+		v.Reset()
+	}
+
+	for _, v := range newestPackageVersion {
+		keepIDs[v.id] = struct{}{}
+	}
+
+	keepSelectedNodes(g, keepIDs, nodeMap)
+
+}
+
+func FilterLatestDepsDebianGraph(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, hashMap map[uint64]int64, beginTime, endTime time.Time) {
+	filterGraph(g, nodeMap, beginTime, endTime)
+	length := g.Nodes().Len() / 2
+
+	keepIDs := make(map[int64]struct{}, length)
+	newestPackageVersion := make(map[uint32]NodeInfo, length)
+	v := traverse.DepthFirst{
+		Visit: func(n graph.Node) {
+			current := nodeMap[n.ID()]
+			currentDate, _ := time.Parse(time.RFC3339, current.Timestamp)
+			hash := hashPackageName(current.Name)
+
+			if latest, ok := newestPackageVersion[hash]; ok {
+				latestDate, _ := time.Parse(time.RFC3339, latest.Timestamp)
+				if currentDate.After(latestDate) { // If the key exists, and current date is later than the one stored
+					newestPackageVersion[hash] = current // Set to the current package
+				} else if currentDate.Equal(latestDate) { // If the dates are somehow equal, compare version numbers
+					currentversion := ParseDebianVersion(current.Version)
+					latestVersion := ParseDebianVersion(latest.Version)
+
+					if CompareVersions(*currentversion, *latestVersion) == 1 {
 						newestPackageVersion[hash] = current
 					}
 				}

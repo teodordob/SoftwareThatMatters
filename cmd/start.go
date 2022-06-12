@@ -88,6 +88,7 @@ func start() {
 				"Find the most used package",
 				"Find the most used application",
 				"Find the xth most used applications",
+				"Find the xth most used applications(unique)",
 				"Quit",
 			},
 		}
@@ -152,7 +153,7 @@ func start() {
 		case 6:
 			fmt.Println("This should find the most used application")
 			input := generateAndRunInt("Please input the number of applications desired")
-			g.FilterGraph(graph, idToNodeInfo, time.Now(), time.Now())
+			//g.FilterGraph(graph, idToNodeInfo, time.Now(), time.Now())
 			pr := g.PageRank(graph)
 
 			keys := make([]int64, 0, len(pr))
@@ -171,6 +172,25 @@ func start() {
 				}
 			}
 		case 7:
+			fmt.Println("This should find the most used application(unique)")
+			input := generateAndRunInt("Please input the number of applications desired")
+			pr := pageRankOnFilteredGraph(graph, hashMap, idToNodeInfo)
+			keys := make([]int64, 0, len(pr))
+			for key := range pr {
+				keys = append(keys, key)
+			}
+			sort.Slice(keys, func(i, j int) bool { return pr[keys[i]] > pr[keys[j]] })
+
+			nr := 0
+			for _, key := range keys {
+				if nr < input && idToNodeInfo[key].IsApplication {
+					fmt.Printf("The number (%d) node is (%v) and has rank %f \n", nr, idToNodeInfo[key], pr[key])
+					nr++
+				} else if nr >= input {
+					break
+				}
+			}
+		case 8:
 			fmt.Println("Stopping the program...")
 			stop = true
 		}
@@ -242,6 +262,13 @@ func findLatestDependenciesOfAPackageBetweenTwotimestamps(graph *simple.Directed
 	nodeStringId := generateAndRunPackageNamePrompt("Please select the name and the version of the package", nodeMap)
 	g.FilterGraph(graph, nodeMap, beginTime, endTime)
 	return g.GetLatestTransitiveDependenciesNode(graph, nodeMap, hashMap, nodeStringId)
+}
+
+func pageRankOnFilteredGraph(graph *simple.DirectedGraph, hashMap map[uint64]int64, nodeMap map[int64]g.NodeInfo) map[int64]float64 {
+	beginTime := generateAndRunDatePrompt("Please input the beginning date of the interval (DD-MM-YYYY)")
+	endTime := generateAndRunDatePrompt("Please input the end date of the interval (DD-MM-YYYY)")
+	g.FilterLatestDepsDebianGraph(graph, nodeMap, hashMap, beginTime, endTime)
+	return g.PageRank(graph)
 }
 
 func generateAndRunDatePrompt(message string) time.Time {
