@@ -6,7 +6,6 @@ import (
 	"hash/crc64"
 	"log"
 	"os"
-	"regexp"
 	"runtime"
 	"sync"
 	"time"
@@ -42,27 +41,7 @@ type NodeInfo struct {
 	id        int64
 }
 
-type GraphEdge struct {
-	g        *simple.DirectedGraph // Graph pointer
-	FId, TId int64                 // From id, To id
-}
-
-func (e GraphEdge) From() graph.Node {
-	return e.g.Node(e.FId)
-}
-
-func (e GraphEdge) To() graph.Node {
-	return e.g.Node(e.TId)
-}
-
-func (e GraphEdge) ReversedEdge() graph.Edge {
-	return GraphEdge{FId: e.TId, TId: e.FId, g: e.g}
-}
-
 var crcTable *crc64.Table = crc64.MakeTable(crc64.ISO)
-var r *regexp.Regexp = regexp.MustCompile("((?P<open>[\\(\\[])(?P<bothVer>((?P<firstVer>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)(?P<comma1>,)(?P<secondVer1>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?)|((?P<comma2>,)?(?P<secondVer2>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?))(?P<close>[\\)\\]]))|(?P<simplevers>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)")
-
-const maxConcurrent = 2 // The max amount of goroutines the CreateEdgesConcurrent function can spawn
 
 // NewNodeInfo constructs a NodeInfo structure and automatically fills the stringID.
 func NewNodeInfo(id int64, name string, version string, timestamp string) *NodeInfo {
@@ -210,7 +189,9 @@ func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, hashToNo
 
 						// Ensure that we do not create edges to self because some packages do that...
 						if dependencyGoId != packageGoId {
-							graph.SetEdge(GraphEdge{FId: packageGoId, TId: dependencyGoId, g: graph})
+							packageNode := graph.Node(packageGoId)
+							dependencyNode := graph.Node(dependencyGoId)
+							graph.SetEdge(simple.Edge{F: packageNode, T: dependencyNode})
 							numEdges++
 						}
 
