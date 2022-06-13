@@ -6,8 +6,6 @@ import (
 	"hash/crc64"
 	"log"
 	"os"
-	"runtime/debug"
-	"sync"
 	"time"
 
 	"github.com/AJMBrands/SoftwareThatMatters/customgraph"
@@ -16,7 +14,6 @@ import (
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/encoding/dot"
 	"gonum.org/v1/gonum/graph/network"
-	"gonum.org/v1/gonum/graph/simple"
 	"gonum.org/v1/gonum/graph/traverse"
 )
 
@@ -58,27 +55,6 @@ func (nodeInfo NodeInfo) String() string {
 	return fmt.Sprintf("Package: %v - Version: %v", nodeInfo.Name, nodeInfo.Version)
 }
 
-// CreateStringIDToNodeInfoMap takes a list of PackageInfo and a simple.DirectedGraph. For each of the packages,
-// it creates a mapping of stringIDs to NodeInfo and also adds a node to the graph. The handling of the IDs is delegated
-// to Gonum. These IDs are also included in the mapping for ease of access.
-func CreateStringIDToNodeInfoMap(packagesInfo *[]PackageInfo, graph *simple.DirectedGraph) map[string]NodeInfo {
-	stringIDToNodeInfoMap := make(map[string]NodeInfo, len(*packagesInfo))
-	for _, packageInfo := range *packagesInfo {
-		for packageVersion, versionInfo := range packageInfo.Versions {
-			packageNameVersionString := fmt.Sprintf("%s-%s", packageInfo.Name, packageVersion)
-			// Delegate the work of creating a unique ID to Gonum
-			newNode := graph.NewNode()
-			newId := newNode.ID()
-			stringIDToNodeInfoMap[packageNameVersionString] = *NewNodeInfo(newId, packageInfo.Name, packageVersion, versionInfo.Timestamp)
-			// idToNodeInfo[newId] =
-			graph.AddNode(newNode)
-		}
-	}
-	return stringIDToNodeInfoMap
-}
-
-// TODO: Maybe change to something like CreateIdToNodeInfoMap so it's not confusing for other people.
-
 func CreateNodeIdToPackageMap(m map[string]NodeInfo) map[int64]NodeInfo {
 	s := make(map[int64]NodeInfo, len(m))
 	for _, val := range m {
@@ -111,7 +87,7 @@ func CreateNameToVersionMap(m *[]PackageInfo) map[string][]string {
 }
 
 //Function to write the simple graph to a dot file so it could be visualized with GraphViz. This includes only Ids
-func Visualization(graph *simple.DirectedGraph, name string) {
+func Visualization(graph *customgraph.DirectedGraph, name string) {
 	result, _ := dot.Marshal(graph, name, "", "  ")
 
 	file, err := os.Create(name + ".dot")
@@ -127,7 +103,7 @@ func Visualization(graph *simple.DirectedGraph, name string) {
 
 //Writes to dot file manually from the NodeInfoMap to include the Node info in the graphViz
 //TODO: Optimize in the future since this is kind of barbaric probably there is a faster way.
-func VisualizationNodeInfo(iDToNodeInfo map[int64]NodeInfo, graph *simple.DirectedGraph, name string) {
+func VisualizationNodeInfo(iDToNodeInfo map[int64]NodeInfo, graph *customgraph.DirectedGraph, name string) {
 	file, err := os.Create(name + ".dot")
 	d1 := []byte("strict digraph" + " " + name + " " + "{\n")
 	d2 := []byte("}")
@@ -192,7 +168,7 @@ func CreateEdges(graph *customgraph.DirectedGraph, inputList *[]PackageInfo, has
 						if dependencyGoId != packageGoId {
 							packageNode := graph.Node(packageGoId)
 							dependencyNode := graph.Node(dependencyGoId)
-							graph.SetEdge(simple.Edge{F: packageNode, T: dependencyNode})
+							graph.SetEdge(customgraph.Edge{F: packageNode, T: dependencyNode})
 							numEdges++
 						}
 
@@ -202,29 +178,8 @@ func CreateEdges(graph *customgraph.DirectedGraph, inputList *[]PackageInfo, has
 		}
 		fmt.Printf("\u001b[1A \u001b[2K \r") // Clear the last line
 		fmt.Printf("%.2f%% done (%d / %d packages connected to their dependencies)\n", float32(id)/float32(n)*100, id, n)
-
-		if id%5000 == 0 {
-			debug.FreeOSMemory()
-		}
 	}
 	return numEdges
-}
-
-func addEdge(graphMutex *sync.RWMutex, dependencyName string, v string, hashToNodeId map[uint64]int64, graph *simple.DirectedGraph, packageName string, packageVersion string) {
-	graphMutex.RLock()
-	dependencyStringId := fmt.Sprintf("%s-%s", dependencyName, v)
-	dependencyGoId := LookupByStringId(dependencyStringId, hashToNodeId)
-	dependencyNode := graph.Node(dependencyGoId)
-
-	packageStringId := fmt.Sprintf("%s-%s", packageName, packageVersion)
-	packageGoId := LookupByStringId(packageStringId, hashToNodeId)
-	packageNode := graph.Node(packageGoId)
-	graphMutex.RUnlock()
-	if packageGoId != dependencyGoId { // This prevents self-loops
-		graphMutex.Lock()
-		graph.SetEdge(simple.Edge{F: packageNode, T: dependencyNode})
-		graphMutex.Unlock() // We're done, release it to the next goroutine
-	}
 }
 
 func ParseJSON(inPath string) []PackageInfo {

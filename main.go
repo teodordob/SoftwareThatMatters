@@ -1,16 +1,18 @@
 package main
 
 import (
-	_ "net/http/pprof"
+	"fmt"
+	"runtime/debug"
+	"sort"
 
-	"github.com/AJMBrands/SoftwareThatMatters/cmd"
+	"github.com/AJMBrands/SoftwareThatMatters/graph"
 )
 
 func main() {
-	//debug.SetGCPercent(10)
+	debug.SetGCPercent(5)
 	//TODO: Move to graph.go; Integrate nicely with cli
 	// To use the cli: go run main.go start.
-	cmd.Execute()
+	//cmd.Execute()
 	// var wg sync.WaitGroup
 
 	// go func() {
@@ -19,18 +21,22 @@ func main() {
 
 	// wg.Add(1)
 
-	// graph1, _, idToNodeInfo, _ := graph.CreateGraph("data/input/processed-10k.json", false)
+	graph1, _, idToNodeInfo, _ := graph.CreateGraph("data/input/processed-100k.json", false)
 
-	// pr := graph.PageRank(graph1)
-	// maxRank := 0.0
-	// var mostUsedId int64
-	// for id, rank := range pr {
-	// 	if rank > maxRank {
-	// 		maxRank = rank
-	// 		mostUsedId = id
-	// 	}
-	// }
-	// fmt.Printf("The highest-ranked node (%v) has rank %f \n", idToNodeInfo[mostUsedId], maxRank)
+	pr := graph.PageRank(graph1)
+	keys := make([]int64, 0, len(pr))
+	for k := range pr {
+		keys = append(keys, k)
+	}
+
+	sort.SliceStable(keys, func(i, j int) bool {
+		return pr[keys[i]] < pr[keys[j]]
+	})
+	count := 10
+	for i := 0; i < count; i++ {
+		fmt.Printf("The n-th (n = %d) highest-ranked node (%v) has rank %f \n", i, idToNodeInfo[keys[i]], pr[keys[i]])
+	}
+
 	// graph.VisualizationNodeInfo(idToNodeInfo, graph1, "IDInfo")
 	// wg.Wait()
 	// pr := network.PageRankSparse(graph1, 0.85, 0.001)

@@ -3,8 +3,6 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"net/http"
-	_ "net/http/pprof"
 	"os"
 	"regexp"
 	"strings"
@@ -64,15 +62,10 @@ func start() {
 	}
 	err = survey.AskOne(usingMavenPrompt, &isUsingMaven)
 
-	fmt.Println("Creating the graph. This make take a while!")
+	fmt.Println("Creating the graph. This may take a while!")
 	if err != nil {
 		panic(err)
 	}
-
-	go func() {
-		fmt.Println("Opened pprof server")
-		fmt.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
 
 	//graph, packagesList, stringIDToNodeInfo, idToNodeInfo, nameToVersions := g.CreateGraph(path, isUsingMaven)
 	graph, hashMap, idToNodeInfo, _ := g.CreateGraph(path, isUsingMaven)
