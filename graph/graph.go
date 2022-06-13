@@ -6,7 +6,7 @@ import (
 	"hash/crc64"
 	"log"
 	"os"
-	"runtime"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -204,7 +204,7 @@ func CreateEdges(graph *customgraph.DirectedGraph, inputList *[]PackageInfo, has
 		fmt.Printf("%.2f%% done (%d / %d packages connected to their dependencies)\n", float32(id)/float32(n)*100, id, n)
 
 		if id%5000 == 0 {
-			runtime.GC()
+			debug.FreeOSMemory()
 		}
 	}
 	return numEdges
