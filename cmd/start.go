@@ -131,7 +131,7 @@ func start() {
 			t1 := time.Now().Unix()
 			g.FilterLatestDepsGraph(graph, idToNodeInfo, hashMap, beginTime, endTime)
 			t2 := time.Now().Unix()
-			fmt.Printf("Graph filtering took %d seconds", t2-t1)
+			fmt.Printf("Graph filtering took %d seconds\n", t2-t1)
 			fmt.Println("Running PageRank")
 			pr := g.PageRank(graph)
 			keys := make([]int64, 0, len(pr))
@@ -145,7 +145,7 @@ func start() {
 
 			count := generateAndRunNumberPrompt("Please select the number (n > 0) of highest-ranked packages you wish")
 			for i := 0; i < count; i++ {
-				fmt.Printf("The n-th (n = %d) highest-ranked node (%v) has rank %f \n", i, idToNodeInfo[keys[i]], pr[keys[i]])
+				fmt.Printf("The number %d highest-ranked node (%v) has rank %f \n", i, idToNodeInfo[keys[i]], pr[keys[i]])
 			}
 		case 5:
 			fmt.Println("Stopping the program...")
