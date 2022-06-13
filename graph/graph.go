@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 	"regexp"
-	"runtime"
 	"sync"
 	"time"
 
@@ -16,7 +15,7 @@ import (
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/encoding/dot"
 	"gonum.org/v1/gonum/graph/network"
-	"gonum.org/v1/gonum/graph/simple"
+	//"gonum.org/v1/gonum/graph/simple"
 	"gonum.org/v1/gonum/graph/traverse"
 )
 
@@ -43,8 +42,8 @@ type NodeInfo struct {
 }
 
 type GraphEdge struct {
-	g        *simple.DirectedGraph // Graph pointer
-	FId, TId int64                 // From id, To id
+	g        *DirectedGraph // Graph pointer
+	FId, TId int64          // From id, To id
 }
 
 func (e GraphEdge) From() graph.Node {
@@ -78,10 +77,10 @@ func (nodeInfo NodeInfo) String() string {
 	return fmt.Sprintf("Package: %v - Version: %v", nodeInfo.Name, nodeInfo.Version)
 }
 
-// CreateStringIDToNodeInfoMap takes a list of PackageInfo and a simple.DirectedGraph. For each of the packages,
+// CreateStringIDToNodeInfoMap takes a list of PackageInfo and a DirectedGraph. For each of the packages,
 // it creates a mapping of stringIDs to NodeInfo and also adds a node to the graph. The handling of the IDs is delegated
 // to Gonum. These IDs are also included in the mapping for ease of access.
-func CreateStringIDToNodeInfoMap(packagesInfo *[]PackageInfo, graph *simple.DirectedGraph) map[string]NodeInfo {
+func CreateStringIDToNodeInfoMap(packagesInfo *[]PackageInfo, graph *DirectedGraph) map[string]NodeInfo {
 	stringIDToNodeInfoMap := make(map[string]NodeInfo, len(*packagesInfo))
 	for _, packageInfo := range *packagesInfo {
 		for packageVersion, versionInfo := range packageInfo.Versions {
@@ -131,7 +130,7 @@ func CreateNameToVersionMap(m *[]PackageInfo) map[string][]string {
 }
 
 //Function to write the simple graph to a dot file so it could be visualized with GraphViz. This includes only Ids
-func Visualization(graph *simple.DirectedGraph, name string) {
+func Visualization(graph *DirectedGraph, name string) {
 	result, _ := dot.Marshal(graph, name, "", "  ")
 
 	file, err := os.Create(name + ".dot")
@@ -147,7 +146,7 @@ func Visualization(graph *simple.DirectedGraph, name string) {
 
 //Writes to dot file manually from the NodeInfoMap to include the Node info in the graphViz
 //TODO: Optimize in the future since this is kind of barbaric probably there is a faster way.
-func VisualizationNodeInfo(iDToNodeInfo map[int64]NodeInfo, graph *simple.DirectedGraph, name string) {
+func VisualizationNodeInfo(iDToNodeInfo map[int64]NodeInfo, graph *DirectedGraph, name string) {
 	file, err := os.Create(name + ".dot")
 	d1 := []byte("strict digraph" + " " + name + " " + "{\n")
 	d2 := []byte("}")
@@ -180,7 +179,7 @@ func VisualizationNodeInfo(iDToNodeInfo map[int64]NodeInfo, graph *simple.Direct
 // a map of names to versions and creates directed edges between the dependent library and its dependencies.
 // TODO: add documentation on how we use semver for edges
 // TODO: Discuss removing pointers from maps since they are reference types without the need of using * : https://stackoverflow.com/questions/40680981/are-maps-passed-by-value-or-by-reference-in-go
-func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, hashToNodeId map[uint64]int64, nodeInfoMap map[int64]NodeInfo, hashToVersionMap map[uint32][]string, isMaven bool) {
+func CreateEdges(graph *DirectedGraph, inputList *[]PackageInfo, hashToNodeId map[uint64]int64, nodeInfoMap map[int64]NodeInfo, hashToVersionMap map[uint32][]string, isMaven bool) {
 	// r, _ := regexp.Compile("((?P<open>[\\(\\[])(?P<bothVer>((?P<firstVer>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)(?P<comma1>,)(?P<secondVer1>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?)|((?P<comma2>,)?(?P<secondVer2>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?))(?P<close>[\\)\\]]))|(?P<simplevers>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)")
 	n := len(*inputList)
 	for id, packageInfo := range *inputList {
@@ -228,19 +227,17 @@ func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, hashToNo
 	}
 }
 
-func addEdge(graphMutex *sync.RWMutex, dependencyName string, v string, hashToNodeId map[uint64]int64, graph *simple.DirectedGraph, packageName string, packageVersion string) {
+func addEdge(graphMutex *sync.RWMutex, dependencyName string, v string, hashToNodeId map[uint64]int64, graph *DirectedGraph, packageName string, packageVersion string) {
 	graphMutex.RLock()
 	dependencyStringId := fmt.Sprintf("%s-%s", dependencyName, v)
 	dependencyGoId := LookupByStringId(dependencyStringId, hashToNodeId)
-	dependencyNode := graph.Node(dependencyGoId)
 
 	packageStringId := fmt.Sprintf("%s-%s", packageName, packageVersion)
 	packageGoId := LookupByStringId(packageStringId, hashToNodeId)
-	packageNode := graph.Node(packageGoId)
 	graphMutex.RUnlock()
 	if packageGoId != dependencyGoId { // This prevents self-loops
 		graphMutex.Lock()
-		graph.SetEdge(simple.Edge{F: packageNode, T: dependencyNode})
+		graph.SetEdge(graph.Edge(packageGoId, dependencyGoId))
 		graphMutex.Unlock() // We're done, release it to the next goroutine
 	}
 }
@@ -343,7 +340,7 @@ func ParseJSON(inPath string) []PackageInfo {
 	return result.Pkgs
 }
 
-func CreateMaps(packageList *[]PackageInfo, graph *simple.DirectedGraph) (map[uint64]int64, map[int64]NodeInfo) {
+func CreateMaps(packageList *[]PackageInfo, graph *DirectedGraph) (map[uint64]int64, map[int64]NodeInfo) {
 	hashToNodeId := make(map[uint64]int64, len(*packageList)*10)
 	idToNodeInfo := make(map[int64]NodeInfo, len(*packageList)*10)
 	for _, packageInfo := range *packageList {
@@ -382,11 +379,11 @@ func LookupByStringId(stringId string, hashTable map[uint64]int64) int64 {
 	return goId
 }
 
-func CreateGraph(inputPath string, isUsingMaven bool) (*simple.DirectedGraph, map[uint64]int64, map[int64]NodeInfo, map[uint32][]string) {
+func CreateGraph(inputPath string, isUsingMaven bool) (*DirectedGraph, map[uint64]int64, map[int64]NodeInfo, map[uint32][]string) {
 	fmt.Println("Parsing input")
 	packagesList := ParseJSON(inputPath)
 	// runtime.GC()
-	graph := simple.NewDirectedGraph()
+	graph := NewDirectedGraph()
 	// stringIDToNodeInfo := CreateStringIDToNodeInfoMap(packagesList, graph)
 	// idToNodeInfo := CreateNodeIdToPackageMap(stringIDToNodeInfo)
 	fmt.Println("Adding nodes and creating indices")
@@ -399,11 +396,11 @@ func CreateGraph(inputPath string, isUsingMaven bool) (*simple.DirectedGraph, ma
 	//CreateEdgesConcurrent(graph, &packagesList, hashToNodeId, idToNodeInfo, nameToVersions, isUsingMaven)
 	fmt.Println("Done!")
 	// TODO: This might cause some issues but for now it saves it quite a lot of memory
-	runtime.GC()
+	//runtime.GC()
 	numNodes := graph.Nodes().Len()
-	runtime.GC()
+	//runtime.GC()
 	numEdges := graph.Edges().Len()
-	runtime.GC()
+	//runtime.GC()
 	fmt.Printf("Nodes: %d, Edges: %d\n", numNodes, numEdges)
 	return graph, hashToNodeId, idToNodeInfo, hashToVersions
 }
@@ -414,7 +411,7 @@ func InInterval(t, begin, end time.Time) bool {
 }
 
 // This is a helper function used to initialize all required auxillary data structures for the graph traversal
-func initializeTraversal(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, connected []*graph.Edge, withinInterval map[int64]bool, beginTime time.Time, endTime time.Time, w traverse.DepthFirst) {
+func initializeTraversal(g *DirectedGraph, nodeMap map[int64]NodeInfo, connected []*graph.Edge, withinInterval map[int64]bool, beginTime time.Time, endTime time.Time, w traverse.DepthFirst) {
 	nodes := g.Nodes()
 	for nodes.Next() { // Initialize withinInterval data structure
 		n := nodes.Node()
@@ -444,7 +441,7 @@ func initializeTraversal(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, co
 	}
 }
 
-func removeDisconnected(g *simple.DirectedGraph, connected []*graph.Edge) {
+func removeDisconnected(g *DirectedGraph, connected []*graph.Edge) {
 	edges := g.Edges()
 	for edges.Next() {
 		edge := edges.Edge()
@@ -459,7 +456,7 @@ func removeDisconnected(g *simple.DirectedGraph, connected []*graph.Edge) {
 }
 
 // This function removes stale edges from the specified graph by doing a DFS with all packages as the root node in O(n^2)
-func traverseAndRemoveEdges(g *simple.DirectedGraph, withinInterval map[int64]bool, w traverse.DepthFirst, connected []*graph.Edge) {
+func traverseAndRemoveEdges(g *DirectedGraph, withinInterval map[int64]bool, w traverse.DepthFirst, connected []*graph.Edge) {
 	nodes := g.Nodes()
 	for nodes.Next() {
 		n := nodes.Node()
@@ -473,12 +470,12 @@ func traverseAndRemoveEdges(g *simple.DirectedGraph, withinInterval map[int64]bo
 
 }
 
-func traverseOneNode(g *simple.DirectedGraph, nodeId int64, withinInterval map[int64]bool, w traverse.DepthFirst, connected []*graph.Edge) {
+func traverseOneNode(g *DirectedGraph, nodeId int64, withinInterval map[int64]bool, w traverse.DepthFirst, connected []*graph.Edge) {
 	_ = w.Walk(g, g.Node(nodeId), nil)
 	removeDisconnected(g, connected)
 }
 
-func filterGraph(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, beginTime, endTime time.Time) {
+func filterGraph(g *DirectedGraph, nodeMap map[int64]NodeInfo, beginTime, endTime time.Time) {
 	// This stores whether the package existed in the specified time range
 	withinInterval := make(map[int64]bool, len(nodeMap))
 	// This keeps track of which edges we've connected
@@ -489,7 +486,7 @@ func filterGraph(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, beginTime,
 	traverseAndRemoveEdges(g, withinInterval, w, connected) // Traverse the graph and remove stale edges
 }
 
-func FilterGraph(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, beginTime, endTime time.Time) {
+func FilterGraph(g *DirectedGraph, nodeMap map[int64]NodeInfo, beginTime, endTime time.Time) {
 	filterGraph(g, nodeMap, beginTime, endTime)
 }
 
@@ -506,7 +503,7 @@ func findNode(hashMap map[uint64]int64, idToNodeInfo map[int64]NodeInfo, stringI
 	return nodeId, correctOk
 }
 
-func FilterNode(g *simple.DirectedGraph, hashMap map[uint64]int64, nodeMap map[int64]NodeInfo, stringId string, beginTime, endTime time.Time) {
+func FilterNode(g *DirectedGraph, hashMap map[uint64]int64, nodeMap map[int64]NodeInfo, stringId string, beginTime, endTime time.Time) {
 
 	var nodeId int64
 	if id, ok := findNode(hashMap, nodeMap, stringId); ok {
@@ -526,7 +523,7 @@ func FilterNode(g *simple.DirectedGraph, hashMap map[uint64]int64, nodeMap map[i
 }
 
 // This function returns the specified node and its dependencies
-func GetTransitiveDependenciesNode(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, hashMap map[uint64]int64, stringId string) *[]NodeInfo {
+func GetTransitiveDependenciesNode(g *DirectedGraph, nodeMap map[int64]NodeInfo, hashMap map[uint64]int64, stringId string) *[]NodeInfo {
 	var nodeId int64
 	result := make([]NodeInfo, 0, len(nodeMap)/2)
 	if id, ok := findNode(hashMap, nodeMap, stringId); ok {
@@ -546,7 +543,7 @@ func GetTransitiveDependenciesNode(g *simple.DirectedGraph, nodeMap map[int64]No
 }
 
 // Get the latest dependencies matching the node's version constraints. If you want this within a specific time frame, use filterNode first
-func GetLatestTransitiveDependenciesNode(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, hashMap map[uint64]int64, stringId string) *[]NodeInfo {
+func GetLatestTransitiveDependenciesNode(g *DirectedGraph, nodeMap map[int64]NodeInfo, hashMap map[uint64]int64, stringId string) *[]NodeInfo {
 	var rootNode NodeInfo
 	allDeps := GetTransitiveDependenciesNode(g, nodeMap, hashMap, stringId)
 	result := make([]NodeInfo, 0, len(*allDeps)/2)
@@ -599,7 +596,7 @@ func GetLatestTransitiveDependenciesNode(g *simple.DirectedGraph, nodeMap map[in
 	return &result
 }
 
-func keepSelectedNodes(g *simple.DirectedGraph, keepIDS map[int64]struct{}, nodeMap map[int64]NodeInfo) {
+func keepSelectedNodes(g *DirectedGraph, keepIDS map[int64]struct{}, nodeMap map[int64]NodeInfo) {
 	for id := range nodeMap {
 		if _, ok := keepIDS[id]; !ok { // If the node id was not on the list, kick it out
 			g.RemoveNode(id)
@@ -608,7 +605,7 @@ func keepSelectedNodes(g *simple.DirectedGraph, keepIDS map[int64]struct{}, node
 }
 
 // Filter the graph between the two given time stamps and then only keep the latest dependencies
-func FilterLatestDepsGraph(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, hashMap map[uint64]int64, beginTime, endTime time.Time) {
+func FilterLatestDepsGraph(g *DirectedGraph, nodeMap map[int64]NodeInfo, hashMap map[uint64]int64, beginTime, endTime time.Time) {
 	filterGraph(g, nodeMap, beginTime, endTime)
 	length := g.Nodes().Len() / 2
 
@@ -654,7 +651,7 @@ func FilterLatestDepsGraph(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, 
 }
 
 // This uses the sparse page rank algorithm to find the Page ranks of all nodes
-func PageRank(graph *simple.DirectedGraph) map[int64]float64 {
+func PageRank(graph *DirectedGraph) map[int64]float64 {
 	pr := network.PageRankSparse(graph, 0.85, 0.01)
 	return pr
 }
