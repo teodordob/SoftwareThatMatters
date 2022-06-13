@@ -23,6 +23,7 @@ var ingestCmd = &cobra.Command{
 func ingestFile() {
 	_, err := os.Stat("data/in/input.json")
 	if err != nil {
+		fmt.Println("Something's wrong with the input file, are you sure there's something in data/in/input.json?")
 		panic(err)
 	}
 	fmt.Println("Starting ingest process...")
