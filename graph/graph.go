@@ -447,11 +447,23 @@ func GetLatestTransitiveDependenciesNode(g *customgraph.DirectedGraph, nodeMap m
 	return &result
 }
 
-func keepSelectedNodes(g *customgraph.DirectedGraph, keepIDS map[int64]struct{}, nodeMap map[int64]NodeInfo) {
-	for id := range nodeMap {
-		if _, ok := keepIDS[id]; !ok { // If the node id was not on the list, kick it out
-			g.RemoveNode(id)
+func keepSelectedNodes(g *customgraph.DirectedGraph, removeIDs map[int64]struct{}) {
+	edges := g.Edges()
+	for edges.Next() {
+		e := edges.Edge()
+		fid := e.From().ID()
+		tid := e.To().ID()
+
+		if _, ok := removeIDs[fid]; ok {
+			g.RemoveEdge(fid, tid)
 		}
+		if _, ok := removeIDs[tid]; ok {
+			g.RemoveEdge(fid, tid)
+		}
+	}
+
+	for id := range removeIDs {
+		g.RemoveNode(id)
 	}
 }
 
@@ -461,6 +473,7 @@ func FilterLatestDepsGraph(g *customgraph.DirectedGraph, nodeMap map[int64]NodeI
 	length := g.Nodes().Len() / 2
 
 	keepIDs := make(map[int64]struct{}, length)
+	removeIDs := make(map[int64]struct{}, length)
 	newestPackageVersion := make(map[uint32]NodeInfo, length)
 	v := traverse.DepthFirst{
 		Visit: func(n graph.Node) {
@@ -485,19 +498,30 @@ func FilterLatestDepsGraph(g *customgraph.DirectedGraph, nodeMap map[int64]NodeI
 			}
 		},
 	}
-
+	numNodes := len(hashMap)
 	nodes := g.Nodes()
+	i := 0
+	fmt.Println()
 	for nodes.Next() {
 		n := nodes.Node()
 		_ = v.Walk(g, n, nil)
 		v.Reset()
+		i++
+		fmt.Printf("\u001b[1A \u001b[2K \r") // Clear the last line
+		fmt.Printf("%d / %d subtrees walked \n", i, numNodes)
 	}
 
 	for _, v := range newestPackageVersion {
 		keepIDs[v.id] = struct{}{}
 	}
 
-	keepSelectedNodes(g, keepIDs, nodeMap)
+	for id := range nodeMap {
+		if _, ok := keepIDs[id]; !ok { // If the node id was not on the list, kick it out
+			removeIDs[id] = struct{}{}
+		}
+	}
+
+	keepSelectedNodes(g, removeIDs)
 
 }
 
