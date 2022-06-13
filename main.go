@@ -1,18 +1,16 @@
 package main
 
 import (
-	"fmt"
 	"runtime/debug"
-	"sort"
 
-	"github.com/AJMBrands/SoftwareThatMatters/graph"
+	"github.com/AJMBrands/SoftwareThatMatters/cmd"
 )
 
 func main() {
 	debug.SetGCPercent(5)
 	//TODO: Move to graph.go; Integrate nicely with cli
 	// To use the cli: go run main.go start.
-	//cmd.Execute()
+	cmd.Execute()
 	// var wg sync.WaitGroup
 
 	// go func() {
@@ -21,21 +19,22 @@ func main() {
 
 	// wg.Add(1)
 
-	graph1, _, idToNodeInfo, _ := graph.CreateGraph("data/input/processed-100k.json", false)
+	// graph1, _, idToNodeInfo, _ := graph.CreateGraph("data/input/processed-100k.json", false)
 
-	pr := graph.PageRank(graph1)
-	keys := make([]int64, 0, len(pr))
-	for k := range pr {
-		keys = append(keys, k)
-	}
+	// pr := graph.PageRank(graph1)
+	// keys := make([]int64, 0, len(pr))
+	// for k := range pr {
+	// 	keys = append(keys, k)
+	// }
 
-	sort.SliceStable(keys, func(i, j int) bool {
-		return pr[keys[i]] < pr[keys[j]]
-	})
-	count := 10
-	for i := 0; i < count; i++ {
-		fmt.Printf("The n-th (n = %d) highest-ranked node (%v) has rank %f \n", i, idToNodeInfo[keys[i]], pr[keys[i]])
-	}
+	// sort.SliceStable(keys, func(i, j int) bool {
+	// 	return pr[keys[i]] > pr[keys[j]]
+	// })
+
+	// count := 10
+	// for i := 0; i < count; i++ {
+	// 	fmt.Printf("The n-th (n = %d) highest-ranked node (%v) has rank %f \n", i, idToNodeInfo[keys[i]], pr[keys[i]])
+	// }
 
 	// graph.VisualizationNodeInfo(idToNodeInfo, graph1, "IDInfo")
 	// wg.Wait()
