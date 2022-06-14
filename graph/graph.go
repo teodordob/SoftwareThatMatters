@@ -109,7 +109,7 @@ func CreateNameToVersionMap(m *[]PackageInfo) map[string][]string {
 func CreateEdges(graph *DirectedGraph, inputList *[]PackageInfo, hashToNodeId map[uint64]int64, hashToVersionMap map[uint32][]string, isMaven bool) {
 	packagesLength := len(*inputList)
 	edgesAmount := 0
-	for id, packageInfo := range *inputList {
+	for id, packageInfo := range (*inputList)[0:1000] {
 		for version, dependencyInfo := range packageInfo.Versions {
 			for dependencyName, dependencyVersion := range dependencyInfo.Dependencies {
 				dependencySemanticVersioning := dependencyVersion

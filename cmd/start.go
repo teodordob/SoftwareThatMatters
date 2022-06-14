@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -71,7 +73,7 @@ func start() {
 				"Find all the possible dependencies of a package",
 				"Find all the possible dependencies of a package between two timestamps",
 				"Find the latest dependencies of a package between two timestamps",
-				"Find the most used package",
+				"Find the n most used packages between two time stamps",
 				"Quit",
 			},
 		}
@@ -110,17 +112,29 @@ func start() {
 				fmt.Println(node)
 			}
 		case 4:
-			fmt.Println("This should find the most used package")
+			fmt.Println("This should find the n most used packages between two time stamps")
+			beginTime := generateAndRunDatePrompt("Please input the beginning date of the interval (DD-MM-YYYY)")
+			endTime := generateAndRunDatePrompt("Please input the end date of the interval (DD-MM-YYYY)")
+			fmt.Println("Getting the latest dependencies for packages. This will take a while")
+			t1 := time.Now().Unix()
+			g.FilterLatestDepsGraph(graph, idToNodeInfo, hashMap, beginTime, endTime)
+			t2 := time.Now().Unix()
+			fmt.Printf("Graph filtering took %d seconds", t2-t1)
+			fmt.Println("Running PageRank")
 			pr := g.PageRank(graph)
-			maxRank := 0.0
-			var mostUsedId int64
-			for id, rank := range pr {
-				if rank > maxRank {
-					maxRank = rank
-					mostUsedId = id
-				}
+			keys := make([]int64, 0, len(pr))
+			for k := range pr {
+				keys = append(keys, k)
 			}
-			fmt.Printf("The highest-ranked node (%v) has rank %f \n", idToNodeInfo[mostUsedId], maxRank)
+
+			sort.SliceStable(keys, func(i, j int) bool {
+				return pr[keys[i]] > pr[keys[j]]
+			})
+
+			count := generateAndRunNumberPrompt("Please select the number (n > 0) of highest-ranked packages you wish")
+			for i := 0; i < count; i++ {
+				fmt.Printf("The %d-th highest-ranked node (%v) has rank %f \n", i, idToNodeInfo[keys[i]], pr[keys[i]])
+			}
 		case 5:
 			fmt.Println("Stopping the program...")
 			stop = true
@@ -189,6 +203,28 @@ func findLatestDependenciesOfAPackageBetweenTwotimestamps(graph *g.DirectedGraph
 	nodeStringId := generateAndRunPackageNamePrompt("Please select the name and the version of the package", nodeMap)
 	g.FilterGraph(graph, nodeMap, beginTime, endTime)
 	return g.GetLatestTransitiveDependenciesNode(graph, nodeMap, hashMap, nodeStringId)
+}
+
+func generateAndRunNumberPrompt(message string) int {
+	validateNumber := func(input any) error {
+		num, err := strconv.Atoi(input.(string))
+		if err != nil {
+			return errors.New("input is not an integer")
+		} else if num <= 0 {
+			return errors.New("input must be a number larger than 0")
+		} else {
+			return nil
+		}
+	}
+
+	numberPrompt := &survey.Input{Message: message}
+	var number int = -1
+	err := survey.AskOne(numberPrompt, &number, survey.WithValidator(validateNumber))
+
+	if err != nil {
+		panic(err)
+	}
+	return number
 }
 
 func generateAndRunDatePrompt(message string) time.Time {
