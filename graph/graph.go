@@ -107,15 +107,16 @@ func CreateNameToVersionMap(m *[]PackageInfo) map[string][]string {
 // CreateEdges takes a graph, a list of packages and their dependencies, a map of stringIDs to NodeInfo and
 // a map of names to versions and creates directed edges between the dependent library and its dependencies.
 func CreateEdges(graph *DirectedGraph, inputList *[]PackageInfo, hashToNodeId map[uint64]int64, hashToVersionMap map[uint32][]string, isMaven bool) {
-	n := len(*inputList)
+	packagesLength := len(*inputList)
+	edgesAmount := 0
 	for id, packageInfo := range *inputList {
 		for version, dependencyInfo := range packageInfo.Versions {
 			for dependencyName, dependencyVersion := range dependencyInfo.Dependencies {
-				finaldep := dependencyVersion
+				dependencySemanticVersioning := dependencyVersion
 				if isMaven {
-					finaldep = ParseMultipleMavenSemanticVersions(dependencyVersion)
+					dependencySemanticVersioning = ParseMultipleMavenSemanticVersions(dependencyVersion)
 				}
-				constraint, err := semver.NewConstraint(finaldep)
+				constraint, err := semver.NewConstraint(dependencySemanticVersioning)
 
 				if err != nil {
 					// A lot of packages don't respect semver. This ensures that we don't crash when we encounter them.
@@ -133,11 +134,12 @@ func CreateEdges(graph *DirectedGraph, inputList *[]PackageInfo, hashToNodeId ma
 						packageStringId := fmt.Sprintf("%s-%s", packageInfo.Name, version)
 						packageGoId := LookupByStringId(packageStringId, hashToNodeId)
 
-						// Ensure that we do not create edges to self because some packages do that...
+						// Ensure that we do not create edgesAmount to self because some packages do that...
 						if dependencyGoId != packageGoId {
 							packageNode := graph.Node(packageGoId)
 							dependencyNode := graph.Node(dependencyGoId)
 							graph.SetEdge(simple.Edge{F: packageNode, T: dependencyNode})
+							edgesAmount++
 						}
 
 					}
@@ -145,8 +147,9 @@ func CreateEdges(graph *DirectedGraph, inputList *[]PackageInfo, hashToNodeId ma
 			}
 		}
 		fmt.Printf("\u001b[1A \u001b[2K \r") // Clear the last line
-		fmt.Printf("%.2f%% done (%d / %d packages connected to their dependencies)\n", float32(id)/float32(n)*100, id, n)
+		fmt.Printf("%.2f%% done (%d / %d packages connected to their dependencies)\n", float32(id)/float32(packagesLength)*100, id, packagesLength)
 	}
+	fmt.Printf("Nodes: %d, Edges: %d\n", len(hashToNodeId), edgesAmount)
 }
 
 func ParseJSON(inPath string) []PackageInfo {
@@ -223,10 +226,6 @@ func CreateGraph(inputPath string, isUsingMaven bool) (*DirectedGraph, map[uint6
 
 	fmt.Println("Done creating edges!")
 
-	numNodes := directedGraph.Nodes().Len()
-	numEdges := directedGraph.Edges().Len()
-
-	fmt.Printf("Nodes: %d, Edges: %d\n", numNodes, numEdges)
 	return directedGraph, hashToNodeId, idToNodeInfo
 }
 
