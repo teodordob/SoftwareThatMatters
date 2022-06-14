@@ -35,7 +35,7 @@ func TestNodeCreationBasicGraph(t *testing.T) {
 	graph := simple.NewDirectedGraph()
 	hashMap, nodeMap := CreateMaps(&simplePackageInfo, graph)
 	hashToVersionMap := CreateHashedVersionMap(&simplePackageInfo)
-	CreateEdges(graph, &simplePackageInfo, hashMap, nodeMap, hashToVersionMap, false)
+	CreateEdges(graph, &simplePackageInfo, hashMap, hashToVersionMap, false)
 
 	t.Run("Create two nodes because we specified two packages", func(t *testing.T) {
 
@@ -132,7 +132,7 @@ func TestNodeCreationMediumComplexity(t *testing.T) {
 	graph := simple.NewDirectedGraph()
 	hashMap, nodeMap := CreateMaps(&mediumPackageInfo, graph)
 	hashToVersionMap := CreateHashedVersionMap(&mediumPackageInfo)
-	CreateEdges(graph, &mediumPackageInfo, hashMap, nodeMap, hashToVersionMap, false)
+	CreateEdges(graph, &mediumPackageInfo, hashMap, hashToVersionMap, false)
 
 	t.Run("Creates 8 nodes, one for every package version", func(t *testing.T) {
 
@@ -222,7 +222,7 @@ func TestCreateEdgesBasicGraph(t *testing.T) {
 	graph := simple.NewDirectedGraph()
 	hashMap, nodeMap := CreateMaps(&simplePackagesInfo, graph)
 	hashToVersionMap := CreateHashedVersionMap(&simplePackagesInfo)
-	CreateEdges(graph, &simplePackagesInfo, hashMap, nodeMap, hashToVersionMap, false)
+	CreateEdges(graph, &simplePackagesInfo, hashMap, hashToVersionMap, false)
 
 	t.Run("Creates one edge when there is one dependency", func(t *testing.T) {
 
@@ -295,7 +295,7 @@ func TestCreateEdgesMediumComplexityGraph(t *testing.T) {
 	graph := simple.NewDirectedGraph()
 	hashMap, nodeMap := CreateMaps(&packagesInfo, graph)
 	hashToVersionMap := CreateHashedVersionMap(&packagesInfo)
-	CreateEdges(graph, &packagesInfo, hashMap, nodeMap, hashToVersionMap, false)
+	CreateEdges(graph, &packagesInfo, hashMap, hashToVersionMap, false)
 	t.Run("Creates 4 edges when there are 4 possible dependencies", func(t *testing.T) {
 		if graph.Edges().Len() != 4 {
 			t.Errorf("Expected 4 edges, got %d", graph.Edges().Len())

@@ -3,8 +3,6 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"net/http"
-	_ "net/http/pprof"
 	"os"
 	"regexp"
 	"strings"
@@ -31,14 +29,6 @@ var startCmd = &cobra.Command{
 // multiple requests on the same graph. This means that the graph can be generated once, and then it can be processed
 // multiple times.
 func start() {
-
-	//validate := func(input string) error {
-	//	if len(input) == 0 {
-	//		return errors.New("input cannot be empty")
-	//	}
-	//	return nil
-	//}
-
 	fileNames := getJSONFilesFromDataFolder()
 	if len(*fileNames) == 0 {
 		fmt.Println("No JSON files found in data folder! Make sure there is at least one file in the data/input folder.")
@@ -68,16 +58,7 @@ func start() {
 		panic(err)
 	}
 
-	go func() {
-		fmt.Println("Opened pprof server")
-		fmt.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
-
-	//graph, packagesList, stringIDToNodeInfo, idToNodeInfo, nameToVersions := g.CreateGraph(path, isUsingMaven)
-	graph, hashMap, idToNodeInfo, _ := g.CreateGraph(path, isUsingMaven)
-
-	// TODO: remove this when we use the actual variables. It is here to get rid of the unused variables warning
-	//_, _, _, _, _ = g.CreateGraph(path, isUsingMaven)
+	graph, hashMap, idToNodeInfo := g.CreateGraph(path, isUsingMaven)
 
 	//"View the graph", "View the packages list", "View the packages list with versions", "View the packages list with versions and dependencies"
 	stop := false
@@ -173,10 +154,6 @@ func getJSONFilesFromDataFolder() *[]string {
 }
 
 func findAllPackagesBetweenTwoTimestamps(idToNodeInfo map[int64]g.NodeInfo) *[]g.NodeInfo {
-	//// TODO: Discuss if we should create a copy or not. My idea is that we should create a copy of the graph and then
-	//// TODO: use the copy to find the packages. This way we can use the original graph for other operations.
-	//graphCopy := *graph
-
 	beginTime := generateAndRunDatePrompt("Please input the beginning date of the interval (DD-MM-YYYY)")
 	endTime := generateAndRunDatePrompt("Please input the end date of the interval (DD-MM-YYYY)")
 
@@ -246,8 +223,8 @@ func generateAndRunDatePrompt(message string) time.Time {
 		panic(err)
 	}
 
-	time, _ := time.Parse("02-01-2006", timeString)
-	return time
+	timestamp, _ := time.Parse("02-01-2006", timeString)
+	return timestamp
 
 }
 
