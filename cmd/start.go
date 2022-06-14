@@ -108,7 +108,7 @@ func start() {
 			}
 		case 3:
 			fmt.Println("This should find the latest dependencies of a package between two time stamps")
-			nodes := findLatestDependenciesOfAPackageBetweenTwotimestamps(graph, hashMap, idToNodeInfo)
+			nodes := findLatestDependenciesOfAPackageBetweenTwoTimestamps(graph, hashMap, idToNodeInfo)
 
 			for _, node := range *nodes {
 				fmt.Println(node)
@@ -233,7 +233,7 @@ func findAllDependenciesOfAPackageBetweenTwoTimestamps(graph *g.DirectedGraph, h
 	return g.GetTransitiveDependenciesNode(graph, nodeMap, hashMap, nodeStringId)
 }
 
-func findLatestDependenciesOfAPackageBetweenTwotimestamps(graph *g.DirectedGraph, hashMap map[uint64]int64, nodeMap map[int64]g.NodeInfo) *[]g.NodeInfo {
+func findLatestDependenciesOfAPackageBetweenTwoTimestamps(graph *g.DirectedGraph, hashMap map[uint64]int64, nodeMap map[int64]g.NodeInfo) *[]g.NodeInfo {
 	beginTime := generateAndRunDatePrompt("Please input the beginning date of the interval (DD-MM-YYYY)")
 	endTime := generateAndRunDatePrompt("Please input the end date of the interval (DD-MM-YYYY)")
 	nodeStringId := generateAndRunPackageNamePrompt("Please select the name and the version of the package", nodeMap)

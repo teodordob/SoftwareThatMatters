@@ -500,7 +500,7 @@ func FilterLatestDepsGraph(g *DirectedGraph, nodeMap map[int64]NodeInfo, hashMap
 
 // PageRank uses the sparse page rank algorithm to find the Page ranks of all nodes
 func PageRank(graph *DirectedGraph) map[int64]float64 {
-	pr := network.PageRank(graph, 0.85, 0.01)
+	pr := network.PageRankSparse(graph, 0.85, 0.001)
 	return pr
 }
 
