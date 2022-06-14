@@ -3,8 +3,6 @@ package graph
 import (
 	"fmt"
 	"testing"
-
-	"gonum.org/v1/gonum/graph/simple"
 )
 
 // TODO: Test ParseJSON
@@ -32,7 +30,7 @@ func TestNodeCreationBasicGraph(t *testing.T) {
 		},
 	}
 	//dummyMap := make(map[int64]NodeInfo)
-	graph := simple.NewDirectedGraph()
+	graph := NewDirectedGraph()
 	hashMap, nodeMap := CreateMaps(&simplePackageInfo, graph)
 	hashToVersionMap := CreateHashedVersionMap(&simplePackageInfo)
 	CreateEdges(graph, &simplePackageInfo, hashMap, hashToVersionMap, false)
@@ -128,16 +126,15 @@ func TestNodeCreationMediumComplexity(t *testing.T) {
 		packageA,
 	}
 
-	//dummyMap := make(map[int64]NodeInfo)
-	graph := simple.NewDirectedGraph()
+	graph := NewDirectedGraph()
 	hashMap, nodeMap := CreateMaps(&mediumPackageInfo, graph)
 	hashToVersionMap := CreateHashedVersionMap(&mediumPackageInfo)
 	CreateEdges(graph, &mediumPackageInfo, hashMap, hashToVersionMap, false)
 
-	t.Run("Creates 8 nodes, one for every package version", func(t *testing.T) {
+	t.Run("Creates 9 nodes, one for every package version", func(t *testing.T) {
 
-		if numNodes := graph.Edges().Len(); numNodes != 8 {
-			t.Errorf("Expected 8 edges, got %d", numNodes)
+		if numNodes := graph.Edges().Len(); numNodes != 9 {
+			t.Errorf("Expected 9 edges, got %d", numNodes)
 		}
 
 	})
@@ -219,7 +216,7 @@ func TestCreateEdgesBasicGraph(t *testing.T) {
 		},
 	}
 	//dummyMap := make(map[int64]NodeInfo)
-	graph := simple.NewDirectedGraph()
+	graph := NewDirectedGraph()
 	hashMap, nodeMap := CreateMaps(&simplePackagesInfo, graph)
 	hashToVersionMap := CreateHashedVersionMap(&simplePackagesInfo)
 	CreateEdges(graph, &simplePackagesInfo, hashMap, hashToVersionMap, false)
@@ -292,7 +289,7 @@ func TestCreateEdgesMediumComplexityGraph(t *testing.T) {
 		},
 	}
 	//dummyMap := make(map[int64]NodeInfo)
-	graph := simple.NewDirectedGraph()
+	graph := NewDirectedGraph()
 	hashMap, nodeMap := CreateMaps(&packagesInfo, graph)
 	hashToVersionMap := CreateHashedVersionMap(&packagesInfo)
 	CreateEdges(graph, &packagesInfo, hashMap, hashToVersionMap, false)

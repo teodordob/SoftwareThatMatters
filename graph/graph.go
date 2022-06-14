@@ -65,7 +65,6 @@ func CreateStringIDToNodeInfoMap(packagesInfo *[]PackageInfo, graph *DirectedGra
 			newNode := graph.NewNode()
 			newId := newNode.ID()
 			stringIDToNodeInfoMap[packageNameVersionString] = *NewNodeInfo(newId, packageInfo.Name, packageVersion, versionInfo.Timestamp)
-			// idToNodeInfo[newId] =
 			graph.AddNode(newNode)
 		}
 	}
@@ -107,8 +106,6 @@ func CreateNameToVersionMap(m *[]PackageInfo) map[string][]string {
 
 // CreateEdges takes a graph, a list of packages and their dependencies, a map of stringIDs to NodeInfo and
 // a map of names to versions and creates directed edges between the dependent library and its dependencies.
-// TODO: add documentation on how we use semver for edges
-// TODO: Discuss removing pointers from maps since they are reference types without the need of using * : https://stackoverflow.com/questions/40680981/are-maps-passed-by-value-or-by-reference-in-go
 func CreateEdges(graph *DirectedGraph, inputList *[]PackageInfo, hashToNodeId map[uint64]int64, hashToVersionMap map[uint32][]string, isMaven bool) {
 	n := len(*inputList)
 	for id, packageInfo := range *inputList {
