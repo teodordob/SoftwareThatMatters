@@ -73,6 +73,7 @@ func start() {
 				"Find all the possible dependencies of a package",
 				"Find all the possible dependencies of a package between two timestamps",
 				"Find the latest dependencies of a package between two timestamps",
+				"Find the n most used packages",
 				"Find the n most used packages between two time stamps",
 				"Quit",
 			},
@@ -112,6 +113,23 @@ func start() {
 				fmt.Println(node)
 			}
 		case 4:
+			fmt.Println("This should find the n most used packages")
+			fmt.Println("Running pagerank")
+			pr := g.PageRank(graph)
+			keys := make([]int64, 0, len(pr))
+			for k := range pr {
+				keys = append(keys, k)
+			}
+
+			sort.SliceStable(keys, func(i, j int) bool {
+				return pr[keys[i]] > pr[keys[j]]
+			})
+
+			count := generateAndRunNumberPrompt("Please select the number (n > 0) of highest-ranked packages you wish to see")
+			for i := 0; i < count; i++ {
+				fmt.Printf("The number %d highest-ranked node (%v) has rank %f \n", i, idToNodeInfo[keys[i]], pr[keys[i]])
+			}
+		case 5:
 			fmt.Println("This should find the n most used packages between two time stamps")
 			beginTime := generateAndRunDatePrompt("Please input the beginning date of the interval (DD-MM-YYYY)")
 			endTime := generateAndRunDatePrompt("Please input the end date of the interval (DD-MM-YYYY)")
@@ -131,11 +149,11 @@ func start() {
 				return pr[keys[i]] > pr[keys[j]]
 			})
 
-			count := generateAndRunNumberPrompt("Please select the number (n > 0) of highest-ranked packages you wish")
+			count := generateAndRunNumberPrompt("Please select the number (n > 0) of highest-ranked packages you wish to see")
 			for i := 0; i < count; i++ {
 				fmt.Printf("The %d-th highest-ranked node (%v) has rank %f \n", i, idToNodeInfo[keys[i]], pr[keys[i]])
 			}
-		case 5:
+		case 6:
 			fmt.Println("Stopping the program...")
 			stop = true
 		}
