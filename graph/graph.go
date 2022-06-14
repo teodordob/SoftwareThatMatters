@@ -503,3 +503,8 @@ func PageRank(graph *DirectedGraph) map[int64]float64 {
 	pr := network.PageRank(graph, 0.85, 0.01)
 	return pr
 }
+
+func Betweenness(graph *DirectedGraph) map[int64]float64 {
+	betweenness := network.Betweenness(graph)
+	return betweenness
+}

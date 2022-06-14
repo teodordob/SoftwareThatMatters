@@ -75,6 +75,7 @@ func start() {
 				"Find the latest dependencies of a package between two timestamps",
 				"Find the n most used packages",
 				"Find the n most used packages between two time stamps",
+				"Find the n nodes with the highest betweenness",
 				"Quit",
 			},
 		}
@@ -127,7 +128,7 @@ func start() {
 
 			count := generateAndRunNumberPrompt("Please select the number (n > 0) of highest-ranked packages you wish to see")
 			for i := 0; i < count; i++ {
-				fmt.Printf("The number %d highest-ranked node (%v) has rank %f \n", i, idToNodeInfo[keys[i]], pr[keys[i]])
+				fmt.Printf("The %d-th highest-ranked node (%v) has rank %f \n", i, idToNodeInfo[keys[i]], pr[keys[i]])
 			}
 		case 5:
 			fmt.Println("This should find the n most used packages between two time stamps")
@@ -154,6 +155,23 @@ func start() {
 				fmt.Printf("The %d-th highest-ranked node (%v) has rank %f \n", i, idToNodeInfo[keys[i]], pr[keys[i]])
 			}
 		case 6:
+			fmt.Println("This should find the n most used packages")
+			fmt.Println("Running pagerank")
+			betweenness := g.Betweenness(graph)
+			keys := make([]int64, 0, len(betweenness))
+			for k := range betweenness {
+				keys = append(keys, k)
+			}
+
+			sort.SliceStable(keys, func(i, j int) bool {
+				return betweenness[keys[i]] > betweenness[keys[j]]
+			})
+
+			count := generateAndRunNumberPrompt("Please select the number (n > 0) of highest-ranked packages you wish to see")
+			for i := 0; i < count; i++ {
+				fmt.Printf("The %d-th highest-ranked node (%v) has a betweenness score of %f \n", i, idToNodeInfo[keys[i]], betweenness[keys[i]])
+			}
+		case 7:
 			fmt.Println("Stopping the program...")
 			stop = true
 		}
