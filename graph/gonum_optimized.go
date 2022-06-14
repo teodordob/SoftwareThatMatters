@@ -27,21 +27,17 @@ var (
 
 // DirectedGraph implements a generalized directed graph.
 type DirectedGraph struct {
-	nodes map[int32]graph.Node
-	from  map[int32]map[int32]graph.Edge
+	nodes map[int64]graph.Node
+	from  map[int64]map[int64]graph.Edge
 
 	nodeIDs *uid.Set
-}
-
-func (g *DirectedGraph) To(id int64) graph.Nodes {
-	panic("Not implemented due to changes!")
 }
 
 // NewDirectedGraph returns a DirectedGraph.
 func NewDirectedGraph() *DirectedGraph {
 	return &DirectedGraph{
-		nodes: make(map[int32]graph.Node, 3_600_000),
-		from:  make(map[int32]map[int32]graph.Edge, 45_000_000),
+		nodes: make(map[int64]graph.Node),
+		from:  make(map[int64]map[int64]graph.Edge),
 
 		nodeIDs: uid.NewSet(),
 	}
@@ -49,17 +45,17 @@ func NewDirectedGraph() *DirectedGraph {
 
 // AddNode adds n to the graph. It panics if the added node ID matches an existing node ID.
 func (g *DirectedGraph) AddNode(n graph.Node) {
-	if _, exists := g.nodes[int32(n.ID())]; exists {
+	if _, exists := g.nodes[n.ID()]; exists {
 		panic(fmt.Sprintf("simple: node ID collision: %d", n.ID()))
 	}
-	g.nodes[int32(n.ID())] = n
+	g.nodes[n.ID()] = n
 	g.nodeIDs.Use(n.ID())
 }
 
 // Edge returns the edge from u to v if such an edge exists and nil otherwise.
 // The node v must be directly reachable from u as defined by the From method.
 func (g *DirectedGraph) Edge(uid, vid int64) graph.Edge {
-	edge, ok := g.from[int32(uid)][int32(vid)]
+	edge, ok := g.from[uid][vid]
 	if !ok {
 		return nil
 	}
@@ -70,7 +66,7 @@ func (g *DirectedGraph) Edge(uid, vid int64) graph.Edge {
 func (g *DirectedGraph) Edges() graph.Edges {
 	var edges []graph.Edge
 	for _, u := range g.nodes {
-		for _, e := range g.from[int32(u.ID())] {
+		for _, e := range g.from[u.ID()] {
 			edges = append(edges, e)
 		}
 	}
@@ -85,22 +81,25 @@ func (g *DirectedGraph) Edges() graph.Edges {
 // The returned graph.Nodes is only valid until the next mutation of
 // the receiver.
 func (g *DirectedGraph) From(id int64) graph.Nodes {
-	panic("Not implemented due to changes!")
+	if len(g.from[id]) == 0 {
+		return graph.Empty
+	}
+	return iterator.NewNodesByEdge(g.nodes, g.from[id])
 }
 
 // HasEdgeBetween returns whether an edge exists between nodes x and y without
 // considering direction.
 func (g *DirectedGraph) HasEdgeBetween(xid, yid int64) bool {
-	if _, ok := g.from[int32(xid)][int32(yid)]; ok {
+	if _, ok := g.from[xid][yid]; ok {
 		return true
 	}
-	_, ok := g.from[int32(yid)][int32(xid)]
+	_, ok := g.from[yid][xid]
 	return ok
 }
 
 // HasEdgeFromTo returns whether an edge exists in the graph from u to v.
 func (g *DirectedGraph) HasEdgeFromTo(uid, vid int64) bool {
-	if _, ok := g.from[int32(uid)][int32(vid)]; !ok {
+	if _, ok := g.from[uid][vid]; !ok {
 		return false
 	}
 	return true
@@ -126,7 +125,7 @@ func (g *DirectedGraph) NewNode() graph.Node {
 // Node returns the node with the given ID if it exists in the graph,
 // and nil otherwise.
 func (g *DirectedGraph) Node(id int64) graph.Node {
-	return g.nodes[int32(id)]
+	return g.nodes[id]
 }
 
 // Nodes returns all the nodes in the graph.
@@ -134,14 +133,17 @@ func (g *DirectedGraph) Node(id int64) graph.Node {
 // The returned graph.Nodes is only valid until the next mutation of
 // the receiver.
 func (g *DirectedGraph) Nodes() graph.Nodes {
-	panic("Not implemented due to changes!")
+	if len(g.nodes) == 0 {
+		return graph.Empty
+	}
+	return iterator.NewNodes(g.nodes)
 }
 
 // NodeWithID returns a Node with the given ID if possible. If a graph.Node
 // is returned that is not already in the graph NodeWithID will return true
 // for new and the graph.Node must be added to the graph before use.
 func (g *DirectedGraph) NodeWithID(id int64) (n graph.Node, new bool) {
-	n, ok := g.nodes[int32(id)]
+	n, ok := g.nodes[id]
 	if ok {
 		return n, false
 	}
@@ -151,23 +153,23 @@ func (g *DirectedGraph) NodeWithID(id int64) (n graph.Node, new bool) {
 // RemoveEdge removes the edge with the given end point IDs from the graph, leaving the terminal
 // nodes. If the edge does not exist it is a no-op.
 func (g *DirectedGraph) RemoveEdge(fid, tid int64) {
-	if _, ok := g.nodes[int32(fid)]; !ok {
+	if _, ok := g.nodes[fid]; !ok {
 		return
 	}
-	if _, ok := g.nodes[int32(tid)]; !ok {
+	if _, ok := g.nodes[tid]; !ok {
 		return
 	}
 
-	delete(g.from[int32(fid)], int32(tid))
+	delete(g.from[fid], tid)
 }
 
 // RemoveNode removes the node with the given ID from the graph, as well as any edges attached
 // to it. If the node is not in the graph it is a no-op.
 func (g *DirectedGraph) RemoveNode(id int64) {
-	if _, ok := g.nodes[int32(id)]; !ok {
+	if _, ok := g.nodes[id]; !ok {
 		return
 	}
-	delete(g.nodes, int32(id))
+	delete(g.nodes, id)
 
 	g.nodeIDs.Release(id)
 }
@@ -178,29 +180,37 @@ func (g *DirectedGraph) RemoveNode(id int64) {
 func (g *DirectedGraph) SetEdge(e graph.Edge) {
 	var (
 		from = e.From()
-		fid  = int32(from.ID())
+		fid  = from.ID()
 		to   = e.To()
-		tid  = int32(to.ID())
+		tid  = to.ID()
 	)
 
 	if fid == tid {
 		panic("simple: adding self edge")
 	}
 
-	//if _, ok := g.nodes[fid]; !ok {
-	//	g.AddNode(from)
-	//} else {
-	//	g.nodes[fid] = from
-	//}
-	//if _, ok := g.nodes[tid]; !ok {
-	//	g.AddNode(to)
-	//} else {
-	//	g.nodes[tid] = to
-	//}
+	if _, ok := g.nodes[fid]; !ok {
+		g.AddNode(from)
+	} else {
+		g.nodes[fid] = from
+	}
+	if _, ok := g.nodes[tid]; !ok {
+		g.AddNode(to)
+	} else {
+		g.nodes[tid] = to
+	}
 
 	if fm, ok := g.from[fid]; ok {
 		fm[tid] = e
 	} else {
-		g.from[fid] = map[int32]graph.Edge{tid: e}
+		g.from[fid] = map[int64]graph.Edge{tid: e}
 	}
+}
+
+// To returns all nodes in g that can reach directly to n.
+//
+// The returned graph.Nodes is only valid until the next mutation of
+// the receiver.
+func (g *DirectedGraph) To(id int64) graph.Nodes {
+	panic("Not implemented due to optimization")
 }
