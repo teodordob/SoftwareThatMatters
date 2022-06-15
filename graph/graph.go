@@ -599,7 +599,7 @@ func GetLatestTransitiveDependenciesNode(g *simple.DirectedGraph, nodeMap map[in
 	return &result
 }
 
-func keepSelectedNodes(g *DirectedGraph, removeIDs map[int64]struct{}) {
+func keepSelectedNodes(g *simple.DirectedGraph, removeIDs map[int64]struct{}) {
 	edges := g.Edges()
 	for edges.Next() {
 		e := edges.Edge()
