@@ -276,6 +276,9 @@ func translateMavenSemver(s string, reg *regexp.Regexp) string {
 	match := reg.FindStringSubmatch(s)
 	result := make(map[string]string)
 	var finalResult string
+	if s == "unspecified" {
+		return ">= 0.0.0"
+	}
 	for i, name := range reg.SubexpNames() {
 		if i != 0 && name != "" {
 			result[name] = match[i]
