@@ -3,6 +3,8 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"regexp"
 	"sort"
@@ -69,8 +71,14 @@ func start() {
 		panic(err)
 	}
 
+	go func() {
+		fmt.Println("Opened pprof server")
+		fmt.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
+
 	//graph, packagesList, stringIDToNodeInfo, idToNodeInfo, nameToVersions := g.CreateGraph(path, isUsingMaven)
 	graph, hashMap, idToNodeInfo, _ := g.CreateGraph(path, isUsingMaven)
+
 	// TODO: remove this when we use the actual variables. It is here to get rid of the unused variables warning
 	//_, _, _, _, _ = g.CreateGraph(path, isUsingMaven)
 

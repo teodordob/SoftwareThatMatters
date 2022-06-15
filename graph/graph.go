@@ -9,7 +9,6 @@ import (
 	"os"
 	"regexp"
 	"runtime"
-	"runtime/debug"
 	"sync"
 	"time"
 
@@ -63,7 +62,7 @@ func (e GraphEdge) ReversedEdge() graph.Edge {
 }
 
 var crcTable *crc64.Table = crc64.MakeTable(crc64.ISO)
-var mvnRegex *regexp.Regexp = regexp.MustCompile("((?P<open>[\\(\\[])(?P<bothVer>((?P<firstVer>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)(?P<comma1>,)(?P<secondVer1>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?)|((?P<comma2>,)?(?P<secondVer2>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?))(?P<close>[\\)\\]]))|(?P<simplevers>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)")
+var r *regexp.Regexp = regexp.MustCompile("((?P<open>[\\(\\[])(?P<bothVer>((?P<firstVer>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)(?P<comma1>,)(?P<secondVer1>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?)|((?P<comma2>,)?(?P<secondVer2>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?))(?P<close>[\\)\\]]))|(?P<simplevers>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)")
 
 const maxConcurrent = 2 // The max amount of goroutines the CreateEdgesConcurrent function can spawn
 
@@ -185,7 +184,7 @@ func VisualizationNodeInfo(iDToNodeInfo map[int64]NodeInfo, graph *simple.Direct
 // TODO: add documentation on how we use semver for edges
 // TODO: Discuss removing pointers from maps since they are reference types without the need of using * : https://stackoverflow.com/questions/40680981/are-maps-passed-by-value-or-by-reference-in-go
 func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, hashToNodeId map[uint64]int64, nodeInfoMap map[int64]NodeInfo, hashToVersionMap map[uint32][]string, isMaven bool) {
-	r, _ := regexp.Compile("((?P<open>[\\(\\[])(?P<bothVer>((?P<firstVer>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)(?P<comma1>,)(?P<secondVer1>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?)|((?P<comma2>,)?(?P<secondVer2>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?))(?P<close>[\\)\\]]))|(?P<simplevers>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)")
+	// r, _ := regexp.Compile("((?P<open>[\\(\\[])(?P<bothVer>((?P<firstVer>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)(?P<comma1>,)(?P<secondVer1>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?)|((?P<comma2>,)?(?P<secondVer2>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?))(?P<close>[\\)\\]]))|(?P<simplevers>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)")
 	n := len(*inputList)
 	for id, packageInfo := range *inputList {
 		for version, dependencyInfo := range packageInfo.Versions {
@@ -225,9 +224,6 @@ func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, hashToNo
 		}
 		fmt.Printf("\u001b[1A \u001b[2K \r") // Clear the last line
 		fmt.Printf("%.2f%% done (%d / %d packages connected to their dependencies)\n", float32(id)/float32(n)*100, id, n)
-		if id%5000 == 0 {
-			debug.FreeOSMemory()
-		}
 	}
 }
 
@@ -511,7 +507,11 @@ func CreateGraph(inputPath string, isUsingMaven bool) (*simple.DirectedGraph, ma
 	fmt.Println("Done!")
 	// TODO: This might cause some issues but for now it saves it quite a lot of memory
 	runtime.GC()
-	fmt.Printf("Nodes: %d, Edges: %d\n", graph.Nodes().Len(), graph.Edges().Len())
+	numNodes := graph.Nodes().Len()
+	runtime.GC()
+	numEdges := graph.Edges().Len()
+	runtime.GC()
+	fmt.Printf("Nodes: %d, Edges: %d\n", numNodes, numEdges)
 	return graph, hashToNodeId, idToNodeInfo, hashToVersions
 }
 
@@ -706,11 +706,23 @@ func GetLatestTransitiveDependenciesNode(g *simple.DirectedGraph, nodeMap map[in
 	return &result
 }
 
-func keepSelectedNodes(g *simple.DirectedGraph, keepIDS map[int64]struct{}, nodeMap map[int64]NodeInfo) {
-	for id := range nodeMap {
-		if _, ok := keepIDS[id]; !ok { // If the node id was not on the list, kick it out
-			g.RemoveNode(id)
+func keepSelectedNodes(g *simple.DirectedGraph, removeIDs map[int64]struct{}) {
+	edges := g.Edges()
+	for edges.Next() {
+		e := edges.Edge()
+		fid := e.From().ID()
+		tid := e.To().ID()
+
+		if _, ok := removeIDs[fid]; ok {
+			g.RemoveEdge(fid, tid)
 		}
+		if _, ok := removeIDs[tid]; ok {
+			g.RemoveEdge(fid, tid)
+		}
+	}
+
+	for id := range removeIDs {
+		g.RemoveNode(id)
 	}
 }
 
@@ -720,6 +732,7 @@ func FilterLatestDepsGraph(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, 
 	length := g.Nodes().Len() / 2
 
 	keepIDs := make(map[int64]struct{}, length)
+	removeIDs := make(map[int64]struct{}, length)
 	newestPackageVersion := make(map[uint32]NodeInfo, length)
 	v := traverse.DepthFirst{
 		Visit: func(n graph.Node) {
@@ -744,19 +757,30 @@ func FilterLatestDepsGraph(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, 
 			}
 		},
 	}
-
+	nodesAmount := len(hashMap)
 	nodes := g.Nodes()
+
+	i := 0
 	for nodes.Next() {
 		n := nodes.Node()
 		_ = v.Walk(g, n, nil)
 		v.Reset()
+		i++
+		fmt.Printf("\u001b[1A \u001b[2K \r") // Clear the last line
+		fmt.Printf("%d / %d subtrees walked \n", i, nodesAmount)
 	}
 
 	for _, v := range newestPackageVersion {
 		keepIDs[v.id] = struct{}{}
 	}
 
-	keepSelectedNodes(g, keepIDs, nodeMap)
+	for id := range nodeMap {
+		if _, ok := keepIDs[id]; !ok { // If the node id was not on the list, kick it out
+			removeIDs[id] = struct{}{}
+		}
+	}
+
+	keepSelectedNodes(g, removeIDs)
 
 }
 
