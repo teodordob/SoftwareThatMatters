@@ -108,7 +108,7 @@ func start() {
 				fmt.Println(node)
 			}
 		case 3:
-			fmt.Println("This should find the latest dependencies of a package")
+			fmt.Println("This should find the latest dependencies of a package (resolve)")
 			nodes := findLatestDependenciesOfAPackage(graph, hashMap, idToNodeInfo)
 			for _, node := range *nodes {
 				fmt.Println(node)

@@ -356,7 +356,7 @@ func GetTransitiveDependenciesNode(g *DirectedGraph, nodeMap map[int64]NodeInfo,
 		return &result // This function is a no-op if we don't have a correct string id
 	}
 
-	w := traverse.DepthFirst{
+	w := traverse.BreadthFirst{
 		Visit: func(n graph.Node) {
 			result = append(result, nodeMap[n.ID()])
 		},
