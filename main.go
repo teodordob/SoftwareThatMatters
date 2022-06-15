@@ -1,9 +1,8 @@
 package main
 
 import (
-	_ "net/http/pprof"
-
 	"github.com/AJMBrands/SoftwareThatMatters/cmd"
+	_ "net/http/pprof"
 )
 
 func main() {
@@ -19,8 +18,8 @@ func main() {
 
 	// wg.Add(1)
 
-	// graph1, _, idToNodeInfo, _ := graph.CreateGraph("data/input/processed-10k.json", false)
-
+	//graph1, _, nodeInfoMap, _ := graph.CreateGraph("data/input/10kPackages.json", true)
+	//graph.VisualizationNodeInfo(nodeInfoMap, graph1, "graphviz")
 	// pr := graph.PageRank(graph1)
 	// maxRank := 0.0
 	// var mostUsedId int64

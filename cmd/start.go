@@ -7,6 +7,8 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -92,6 +94,8 @@ func start() {
 				"Find all the possible dependencies of a package between two timestamps",
 				"Find the latest dependencies of a package between two timestamps",
 				"Find the most used package",
+				"Find the xth most used packages (unique)",
+				"Find the xth most used packages (betweenness)",
 				"Quit",
 			},
 		}
@@ -142,6 +146,42 @@ func start() {
 			}
 			fmt.Printf("The highest-ranked node (%v) has rank %f \n", idToNodeInfo[mostUsedId], maxRank)
 		case 5:
+			fmt.Println("This should find the most used application(unique)")
+			input := generateAndRunInt("Please input the number of applications desired")
+			pr := pageRankOnFilteredGraph(graph, hashMap, idToNodeInfo)
+			keys := make([]int64, 0, len(pr))
+			for key := range pr {
+				keys = append(keys, key)
+			}
+			sort.Slice(keys, func(i, j int) bool { return pr[keys[i]] > pr[keys[j]] })
+
+			nr := 0
+			for _, key := range keys {
+				if nr < input {
+					fmt.Printf("The number (%d) node is (%v) and has rank %f \n", nr, idToNodeInfo[key], pr[key])
+					nr++
+				} else if nr >= input {
+					break
+				}
+			}
+		case 6:
+			fmt.Println("This should find the n most used packages")
+			fmt.Println("Running betweenness algorithm")
+			betweenness := g.Betweenness(graph)
+			keys := make([]int64, 0, len(betweenness))
+			for k := range betweenness {
+				keys = append(keys, k)
+			}
+
+			sort.SliceStable(keys, func(i, j int) bool {
+				return betweenness[keys[i]] > betweenness[keys[j]]
+			})
+
+			count := generateAndRunInt("Please select the number (n > 0) of highest-ranked packages you wish to see")
+			for i := 0; i < count; i++ {
+				fmt.Printf("The %d-th highest-ranked node (%v) has a betweenness score of %f \n", i, idToNodeInfo[keys[i]], betweenness[keys[i]])
+			}
+		case 7:
 			fmt.Println("Stopping the program...")
 			stop = true
 		}
@@ -250,6 +290,39 @@ func generateAndRunDatePrompt(message string) time.Time {
 	time, _ := time.Parse("02-01-2006", timeString)
 	return time
 
+}
+
+func pageRankOnFilteredGraph(graph *simple.DirectedGraph, hashMap map[uint64]int64, nodeMap map[int64]g.NodeInfo) map[int64]float64 {
+	beginTime := generateAndRunDatePrompt("Please input the beginning date of the interval (DD-MM-YYYY)")
+	endTime := generateAndRunDatePrompt("Please input the end date of the interval (DD-MM-YYYY)")
+	g.FilterLatestDepsGraph(graph, nodeMap, hashMap, beginTime, endTime)
+	return g.PageRank(graph)
+}
+
+func generateAndRunInt(message string) int {
+
+	validateInput := func(input interface{}) error {
+		str, _ := input.(string)
+		nr, err := strconv.Atoi(str)
+		if err != nil {
+
+			return errors.New("input is not an integer")
+		}
+		if nr <= 0 {
+			return errors.New("input cannot be lower or equal to 0")
+		}
+		return nil
+	}
+	intPrompt := &survey.Input{
+		Message: message,
+	}
+	var ans int
+	err := survey.AskOne(intPrompt, &ans, survey.WithValidator(validateInput))
+
+	if err != nil {
+		panic(err)
+	}
+	return ans
 }
 
 func generateAndRunPackageNamePrompt(message string, stringIDToNodeInfo map[int64]g.NodeInfo) string {

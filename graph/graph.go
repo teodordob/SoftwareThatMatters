@@ -8,6 +8,7 @@ import (
 	"os"
 	"regexp"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -191,20 +192,12 @@ func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, hashToNo
 					finaldep = parseMultipleMavenSemVers(dependencyVersion, r)
 				}
 				constraint, err := semver.NewConstraint(finaldep)
-				//c, err := semver2.ParseRange(dependencyVersion)
 				if err != nil {
 					continue
-					//fmt.Println("sunt aici")
-					//fmt.Println(finaldep)
-					////log.Fatal(finaldep)
-					//log.Fatal(err)
 				}
 				for _, v := range LookupVersions(dependencyName, hashToVersionMap) {
-					//newVersion, _ := semver2.Parse(v)
 					newVersion, err := semver.NewVersion(v)
 					if err != nil {
-						//fmt.Println(v)
-						//panic(err)
 						continue
 					}
 					if constraint.Check(newVersion) {
@@ -274,9 +267,12 @@ func parseMultipleMavenSemVers(s string, reg *regexp.Regexp) string {
 
 func translateMavenSemver(s string, reg *regexp.Regexp) string {
 	match := reg.FindStringSubmatch(s)
+	if match == nil {
+		return s
+	}
 	result := make(map[string]string)
 	var finalResult string
-	if s == "unspecified" {
+	if s == "unspecified" || s == "LATEST" {
 		return ">= 0.0.0"
 	}
 	for i, name := range reg.SubexpNames() {
@@ -641,10 +637,10 @@ func FilterLatestDepsGraph(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, 
 				if currentDate.After(latestDate) { // If the key exists, and current date is later than the one stored
 					newestPackageVersion[hash] = current // Set to the current package
 				} else if currentDate.Equal(latestDate) { // If the dates are somehow equal, compare version numbers
-					currentversion, _ := semver.NewVersion(current.Version)
-					latestVersion, _ := semver.NewVersion(latest.Version)
+					//currentversion, _ := semver.NewVersion(current.Version)
+					//latestVersion, _ := semver.NewVersion(latest.Version)
 
-					if currentversion.GreaterThan(latestVersion) {
+					if strings.Compare(current.Version, latest.Version) > 1 {
 						newestPackageVersion[hash] = current
 					}
 				}
@@ -684,4 +680,9 @@ func FilterLatestDepsGraph(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, 
 func PageRank(graph *simple.DirectedGraph) map[int64]float64 {
 	pr := network.PageRankSparse(graph, 0.85, 0.01)
 	return pr
+}
+
+func Betweenness(graph *simple.DirectedGraph) map[int64]float64 {
+	betweenness := network.Betweenness(graph)
+	return betweenness
 }
