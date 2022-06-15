@@ -255,63 +255,7 @@ func CreateEdgesDebian(graph *simple.DirectedGraph, inputList *[]PackageInfo, ha
 		}
 		fmt.Printf("\u001b[1A \u001b[2K \r") // Clear the last line
 		fmt.Printf("%.2f%% done (%d / %d packages connected to their dependencies)\n", float32(id)/float32(n)*100, id, n)
-		if id%5000 == 0 {
-			debug.FreeOSMemory()
-		}
 	}
-}
-
-func CreateEdgesConcurrent(graph *simple.DirectedGraph, inputList *[]PackageInfo, hashToNodeId map[uint64]int64, nodeInfoMap map[int64]NodeInfo, nameToVersionMap map[string][]string, isMaven bool) {
-	var graphMutex sync.RWMutex
-	var wg sync.WaitGroup
-	guard := make(chan uint8, maxConcurrent)
-
-	for _, packageInfo := range *inputList {
-		for version, dependencyInfo := range packageInfo.Versions {
-			for dependencyName, dependencyVersion := range dependencyInfo.Dependencies {
-				wg.Add(1) // Add one goroutine to wait group
-				go func(dependencyVersion string, isMaven bool, nameToVersionMap map[string][]string, dependencyName string, hashToNodeId map[uint64]int64, graph *simple.DirectedGraph, packageName string, packageVersion string, mut *sync.RWMutex) {
-					guard <- 1
-					defer wg.Done()
-					createEdgesForDependency(dependencyName, dependencyVersion, isMaven, nameToVersionMap, hashToNodeId, graph, packageName, packageVersion, mut)
-					<-guard
-				}(dependencyVersion, isMaven, nameToVersionMap, dependencyName, hashToNodeId, graph, packageInfo.Name, version, &graphMutex)
-
-			}
-		}
-	}
-
-	wg.Wait()
-
-}
-
-func createEdgesForDependency(dependencyName string, dependencyVersion string, isMaven bool, nameToVersionMap map[string][]string, hashToNodeId map[uint64]int64, graph *simple.DirectedGraph, packageName string, packageVersion string, graphMutex *sync.RWMutex) {
-	finaldep := dependencyVersion
-	if isMaven {
-		finaldep = parseMultipleMavenSemVers(dependencyVersion, mvnRegex)
-	}
-	constraint, err := semver.NewConstraint(finaldep)
-
-	if err != nil { // If the constraint doesn't work, just try an exact match
-		//log.Printf("Error: %s (with dependency %s - %s)\n", err, dependencyName, dependencyVersion)
-		for _, v := range nameToVersionMap[dependencyName] {
-			if dependencyVersion == v {
-				addEdge(graphMutex, dependencyName, v, hashToNodeId, graph, packageName, packageVersion)
-				break
-			}
-		}
-	} else {
-		for _, v := range nameToVersionMap[dependencyName] {
-			newVersion, err := semver.NewVersion(v)
-			if err != nil {
-				continue
-			}
-			if constraint.Check(newVersion) {
-				addEdge(graphMutex, dependencyName, v, hashToNodeId, graph, packageName, packageVersion)
-			}
-		}
-	}
-
 }
 
 func addEdge(graphMutex *sync.RWMutex, dependencyName string, v string, hashToNodeId map[uint64]int64, graph *simple.DirectedGraph, packageName string, packageVersion string) {
@@ -789,6 +733,7 @@ func FilterLatestDepsDebianGraph(g *simple.DirectedGraph, nodeMap map[int64]Node
 	length := g.Nodes().Len() / 2
 
 	keepIDs := make(map[int64]struct{}, length)
+	removeIDs := make(map[int64]struct{}, length)
 	newestPackageVersion := make(map[uint32]NodeInfo, length)
 	v := traverse.DepthFirst{
 		Visit: func(n graph.Node) {
@@ -813,19 +758,30 @@ func FilterLatestDepsDebianGraph(g *simple.DirectedGraph, nodeMap map[int64]Node
 			}
 		},
 	}
-
+	nodesAmount := len(hashMap)
 	nodes := g.Nodes()
+
+	i := 0
 	for nodes.Next() {
 		n := nodes.Node()
 		_ = v.Walk(g, n, nil)
 		v.Reset()
+		i++
+		fmt.Printf("\u001b[1A \u001b[2K \r") // Clear the last line
+		fmt.Printf("%d / %d subtrees walked \n", i, nodesAmount)
 	}
 
 	for _, v := range newestPackageVersion {
 		keepIDs[v.id] = struct{}{}
 	}
 
-	keepSelectedNodes(g, keepIDs, nodeMap)
+	for id := range nodeMap {
+		if _, ok := keepIDs[id]; !ok { // If the node id was not on the list, kick it out
+			removeIDs[id] = struct{}{}
+		}
+	}
+
+	keepSelectedNodes(g, removeIDs)
 
 }
 
