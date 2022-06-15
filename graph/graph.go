@@ -530,3 +530,7 @@ func PageRank(graph *customgraph.DirectedGraph) map[int64]float64 {
 	pr := network.PageRankSparse(graph, 0.85, 0.01)
 	return pr
 }
+
+func Betweenness(graph *customgraph.DirectedGraph) map[int64]float64 {
+	return network.Betweenness(graph)
+}
