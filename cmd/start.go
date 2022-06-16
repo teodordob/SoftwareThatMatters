@@ -94,7 +94,7 @@ func start() {
 				"Find all the possible dependencies of a package between two timestamps",
 				"Find the latest dependencies of a package between two timestamps",
 				"Find the most used package",
-				"Find the xth most used packages (unique)",
+				"Find the xth most used unique packages (pagerank)",
 				"Find the xth most used packages (betweenness)",
 				"Quit",
 			},
@@ -146,7 +146,7 @@ func start() {
 			}
 			fmt.Printf("The highest-ranked node (%v) has rank %f \n", idToNodeInfo[mostUsedId], maxRank)
 		case 5:
-			fmt.Println("This should find the most used packages(pagerank)")
+			fmt.Println("This should find the most used packages (unique)")
 			input := generateAndRunInt("Please input the number of packages desired")
 			pr := pageRankOnFilteredGraph(graph, hashMap, idToNodeInfo)
 			keys := make([]int64, 0, len(pr))
