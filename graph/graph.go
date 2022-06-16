@@ -519,6 +519,51 @@ func keepSelectedNodes(g *customgraph.DirectedGraph, removeIDs map[int64]struct{
 	}
 }
 
+func LatestNoTraversal(g *customgraph.DirectedGraph, nodeMap map[int64]NodeInfo, hashMap map[uint64]int64, beginTime, endTime time.Time) {
+	length := g.Nodes().Len() / 2
+	newestPackageVersion := make(map[uint32]NodeInfo, length)
+	keepIDs := make(map[int64]struct{}, length)
+	removeIDs := make(map[int64]struct{}, length)
+	nodes := g.Nodes()
+
+	for nodes.Next() {
+		n := nodes.Node()
+		current := nodeMap[n.ID()]
+		currentDate := current.Timestamp
+		hash := hashPackageName(current.Name)
+
+		if latest, ok := newestPackageVersion[hash]; ok {
+			latestDate := latest.Timestamp
+			if currentDate.After(latestDate) { // If the key exists, and current date is later than the one stored
+				newestPackageVersion[hash] = current // Set to the current package
+			} else if currentDate.Equal(latestDate) { // If the dates are somehow equal, compare version numbers
+				currentversion, _ := semver.NewVersion(current.Version)
+				latestVersion, _ := semver.NewVersion(latest.Version)
+
+				if currentversion.GreaterThan(latestVersion) {
+					newestPackageVersion[hash] = current
+				}
+			}
+		} else { // If the key doesn't exist yet
+			newestPackageVersion[hash] = current
+		}
+
+	}
+
+	for _, v := range newestPackageVersion {
+		keepIDs[v.id] = struct{}{}
+	}
+
+	for id := range nodeMap {
+		if _, ok := keepIDs[id]; !ok { // If the node id was not on the list, kick it out
+			removeIDs[id] = struct{}{}
+		}
+	}
+
+	keepSelectedNodes(g, removeIDs)
+
+}
+
 // Filter the graph between the two given time stamps and then only keep the latest dependencies
 func FilterLatestDepsGraph(g *customgraph.DirectedGraph, nodeMap map[int64]NodeInfo, hashMap map[uint64]int64, beginTime, endTime time.Time) {
 	filterGraph(g, nodeMap, beginTime, endTime)
