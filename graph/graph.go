@@ -140,6 +140,15 @@ func CreateEdges(graph *customgraph.DirectedGraph, inputList *[]PackageInfo, has
 	// r, _ := regexp.Compile("((?P<open>[\\(\\[])(?P<bothVer>((?P<firstVer>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)(?P<comma1>,)(?P<secondVer1>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?)|((?P<comma2>,)?(?P<secondVer2>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?))(?P<close>[\\)\\]]))|(?P<simplevers>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)")
 	n := len(*inputList)
 	numEdges := 0
+	idxchannel := make(chan int, 2)
+	go func(n int, ch chan int) {
+		for {
+			for i := range ch {
+				fmt.Printf("\u001b[1A \u001b[2K \r") // Clear the last line
+				fmt.Printf("%.2f%% done (%d / %d packages connected to their dependencies)\n", float64(i)/float64(n)*100, i, n)
+			}
+		}
+	}(n, idxchannel)
 	for id, packageInfo := range *inputList {
 		for version, dependencyInfo := range packageInfo.Versions {
 			for dependencyName, dependencyVersion := range dependencyInfo.Dependencies {
@@ -176,12 +185,10 @@ func CreateEdges(graph *customgraph.DirectedGraph, inputList *[]PackageInfo, has
 				}
 			}
 		}
-		if id%10000 == 0 {
-			fmt.Printf("\u001b[1A \u001b[2K \r") // Clear the last line
-			fmt.Printf("%.2f%% done (%d / %d packages connected to their dependencies)\n", float64(id)/float64(n)*100, id, n)
-		}
-
+		idxchannel <- id
 	}
+	close(idxchannel)
+
 	return numEdges
 }
 
