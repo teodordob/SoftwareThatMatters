@@ -367,6 +367,33 @@ func findNode(hashMap map[uint64]int64, idToNodeInfo map[int64]NodeInfo, stringI
 	return nodeId, correctOk
 }
 
+func FilterNoTraversal(g *DirectedGraph, nodeMap map[int64]NodeInfo, beginTime, endTime time.Time) {
+	nodes := g.Nodes()
+
+	nodesInInterval := make(map[int64]struct{}, len(nodeMap))
+	removeIDs := make(map[int64]struct{}, len(nodeMap))
+
+	for nodes.Next() { // Find nodes that are in the correct time interval
+		n := nodes.Node()
+		id := n.ID()
+		publishTime, err := time.Parse(time.RFC3339, nodeMap[id].Timestamp)
+		if err != nil {
+			panic(err)
+		}
+		if InInterval(publishTime, beginTime, endTime) {
+			nodesInInterval[id] = struct{}{}
+		}
+	}
+
+	for id := range nodeMap {
+		if _, ok := nodesInInterval[id]; !ok { // If the node id was not on the list, kick it out
+			removeIDs[id] = struct{}{}
+		}
+	}
+
+	keepSelectedNodes(g, removeIDs)
+}
+
 func FilterNode(g *DirectedGraph, hashMap map[uint64]int64, nodeMap map[int64]NodeInfo, stringId string, beginTime, endTime time.Time) {
 
 	var nodeId int64
