@@ -176,8 +176,11 @@ func CreateEdges(graph *customgraph.DirectedGraph, inputList *[]PackageInfo, has
 				}
 			}
 		}
-		fmt.Printf("\u001b[1A \u001b[2K \r") // Clear the last line
-		fmt.Printf("%.2f%% done (%d / %d packages connected to their dependencies)\n", float32(id)/float32(n)*100, id, n)
+		if id%10000 == 0 {
+			fmt.Printf("\u001b[1A \u001b[2K \r") // Clear the last line
+			fmt.Printf("%.2f%% done (%d / %d packages connected to their dependencies)\n", float32(id)/float32(n)*100, id, n)
+		}
+
 	}
 	return numEdges
 }
