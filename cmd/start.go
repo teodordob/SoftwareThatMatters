@@ -277,7 +277,8 @@ func findLatestDependenciesOfAPackageBetweenTwotimestamps(graph *customgraph.Dir
 	beginTime := generateAndRunDatePrompt("Please input the beginning date of the interval (DD-MM-YYYY)")
 	endTime := generateAndRunDatePrompt("Please input the end date of the interval (DD-MM-YYYY)")
 	nodeStringId := generateAndRunPackageNamePrompt("Please select the name and the version of the package", nodeMap)
-	g.FilterGraph(graph, nodeMap, beginTime, endTime)
+	g.FilterNoTraversal(graph, nodeMap, beginTime, endTime)
+	g.LatestNoTraversal(graph, nodeMap, hashMap)
 	return g.GetLatestTransitiveDependenciesNode(graph, nodeMap, hashMap, nodeStringId)
 }
 
