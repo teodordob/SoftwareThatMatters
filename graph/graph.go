@@ -519,7 +519,7 @@ func keepSelectedNodes(g *customgraph.DirectedGraph, removeIDs map[int64]struct{
 	}
 }
 
-func LatestNoTraversal(g *customgraph.DirectedGraph, nodeMap map[int64]NodeInfo, hashMap map[uint64]int64, beginTime, endTime time.Time) {
+func LatestNoTraversal(g *customgraph.DirectedGraph, nodeMap map[int64]NodeInfo, hashMap map[uint64]int64) {
 	length := g.Nodes().Len() / 2
 	newestPackageVersion := make(map[uint32]NodeInfo, length)
 	keepIDs := make(map[int64]struct{}, length)
