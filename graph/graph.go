@@ -267,8 +267,8 @@ func InInterval(t, begin, end time.Time) bool {
 	return t.Equal(begin) || t.Equal(end) || t.After(begin) && t.Before(end)
 }
 
-// This is a helper function used to initialize all required auxillary data structures for the graph traversal
-func initializeTraversal(g *customgraph.DirectedGraph, nodeMap map[int64]NodeInfo, connected []*graph.Edge, withinInterval map[int64]bool, beginTime time.Time, endTime time.Time, w traverse.DepthFirst) {
+// initializeTraversal is a helper function used to initialize all required auxiliary data structures for the graph traversal
+func initializeTraversal(g *DirectedGraph, nodeMap map[int64]NodeInfo, withinInterval map[int64]bool, beginTime time.Time, endTime time.Time) {
 	nodes := g.Nodes()
 	for nodes.Next() { // Initialize withinInterval data structure
 		n := nodes.Node()
@@ -277,24 +277,6 @@ func initializeTraversal(g *customgraph.DirectedGraph, nodeMap map[int64]NodeInf
 		if InInterval(publishTime, beginTime, endTime) {
 			withinInterval[id] = true
 		}
-	}
-
-	// TODO: Discuss if we should just leave packages free-floating if they haven't been visited even once
-	w = traverse.DepthFirst{
-		Traverse: func(e graph.Edge) bool { // The dependent / parent node
-			var traverse bool
-			fromId := e.From().ID()
-			toId := e.To().ID()
-			if withinInterval[toId] {
-				fromTime := nodeMap[fromId].Timestamp // The dependent node's time stamp
-				toTime := nodeMap[toId].Timestamp     // The dependency node's time stamp
-				if traverse = fromTime.After(toTime); traverse {
-					connected = append(connected, &e)
-				} // If the dependency was released before the parent node, add this edge to the connected nodes
-			}
-
-			return traverse
-		},
 	}
 }
 
@@ -313,13 +295,38 @@ func removeDisconnected(g *customgraph.DirectedGraph, connected []*graph.Edge) {
 }
 
 // This function removes stale edges from the specified graph by doing a DFS with all packages as the root node in O(n^2)
-func traverseAndRemoveEdges(g *customgraph.DirectedGraph, withinInterval map[int64]bool, w traverse.DepthFirst, connected []*graph.Edge) {
+func traverseAndRemoveEdges(g *DirectedGraph, nodeMap map[int64]NodeInfo, withinInterval map[int64]bool) {
 	nodes := g.Nodes()
+	// This keeps track of which edges we've connected
+	connected := make([]*graph.Edge, 0, len(nodeMap)*2)
+
+	t := traverse.BreadthFirst{
+		Traverse: func(e graph.Edge) bool { // The dependent / parent node
+			var traversal bool
+			fromId := e.From().ID()
+			toId := e.To().ID()
+			if withinInterval[toId] {
+				fromTime, err1 := time.Parse(time.RFC3339, nodeMap[fromId].Timestamp) // The dependent node's time stamp
+				toTime, err2 := time.Parse(time.RFC3339, nodeMap[toId].Timestamp)     // The dependency node's time stamp
+
+				if err1 != nil || err2 != nil {
+					panic(err1)
+				}
+
+				if traversal = fromTime.After(toTime); traversal {
+					connected = append(connected, &e)
+				} // If the dependency was released before the parent node, add this edge to the connected nodes
+			}
+
+			return traversal
+		},
+	}
+
 	for nodes.Next() {
 		n := nodes.Node()
 		if withinInterval[n.ID()] { // We'll only consider traversing this subtree if its root was within the specified time interval
-			_ = w.Walk(g, n, nil) // Continue walking this subtree until we've visited everything we're allowed to according to Traverse
-			w.Reset()             // Clean up for the next iteration
+			_ = t.Walk(g, n, nil) // Continue walking this subtree until we've visited everything we're allowed to according to Traverse
+			t.Reset()             // Clean up for the next iteration
 		}
 	}
 
@@ -327,20 +334,42 @@ func traverseAndRemoveEdges(g *customgraph.DirectedGraph, withinInterval map[int
 
 }
 
-func traverseOneNode(g *customgraph.DirectedGraph, nodeId int64, withinInterval map[int64]bool, w traverse.DepthFirst, connected []*graph.Edge) {
-	_ = w.Walk(g, g.Node(nodeId), nil)
+func traverseOneNode(g *DirectedGraph, nodeMap map[int64]NodeInfo, withinInterval map[int64]bool, nodeId int64) {
+	connected := make([]*graph.Edge, 0, len(nodeMap)*2)
+
+	t := traverse.BreadthFirst{
+		Traverse: func(e graph.Edge) bool { // The dependent / parent node
+			var traversal bool
+			fromId := e.From().ID()
+			toId := e.To().ID()
+			if withinInterval[toId] {
+				fromTime, err1 := time.Parse(time.RFC3339, nodeMap[fromId].Timestamp) // The dependent node's time stamp
+				toTime, err2 := time.Parse(time.RFC3339, nodeMap[toId].Timestamp)     // The dependency node's time stamp
+
+				if err1 != nil || err2 != nil {
+					panic(err1)
+				}
+
+				if traversal = fromTime.After(toTime); traversal {
+					connected = append(connected, &e)
+				} // If the dependency was released before the parent node, add this edge to the connected nodes
+			}
+
+			return traversal
+		},
+	}
+
+	_ = t.Walk(g, g.Node(nodeId), nil)
 	removeDisconnected(g, connected)
 }
 
 func filterGraph(g *customgraph.DirectedGraph, nodeMap map[int64]NodeInfo, beginTime, endTime time.Time) {
 	// This stores whether the package existed in the specified time range
 	withinInterval := make(map[int64]bool, len(nodeMap))
-	// This keeps track of which edges we've connected
-	connected := make([]*graph.Edge, 0, len(nodeMap)*2)
-	var w traverse.DepthFirst
-	initializeTraversal(g, nodeMap, connected, withinInterval, beginTime, endTime, w) // Initialize all auxillary data structures for the traversal
 
-	traverseAndRemoveEdges(g, withinInterval, w, connected) // Traverse the graph and remove stale edges
+	initializeTraversal(g, nodeMap, withinInterval, beginTime, endTime) // Initialize all auxillary data structures for the traversal
+
+	traverseAndRemoveEdges(g, nodeMap, withinInterval) // Traverse the graph and remove stale edges
 }
 
 func FilterGraph(g *customgraph.DirectedGraph, nodeMap map[int64]NodeInfo, beginTime, endTime time.Time) {
@@ -371,12 +400,10 @@ func FilterNode(g *customgraph.DirectedGraph, hashMap map[uint64]int64, nodeMap 
 
 	// This stores whether the package existed in the specified time range
 	withinInterval := make(map[int64]bool, len(nodeMap))
-	// This keeps track of which edges we've connected
-	connected := make([]*graph.Edge, 0, len(nodeMap)*2)
-	var w traverse.DepthFirst
-	initializeTraversal(g, nodeMap, connected, withinInterval, beginTime, endTime, w) // Initialize all auxillary data structures for the traversal
 
-	traverseOneNode(g, nodeId, withinInterval, w, connected)
+	initializeTraversal(g, nodeMap, withinInterval, beginTime, endTime) // Initialize all auxillary data structures for the traversal
+
+	traverseOneNode(g, nodeMap, withinInterval, nodeId)
 }
 
 // This function returns the specified node and its dependencies
