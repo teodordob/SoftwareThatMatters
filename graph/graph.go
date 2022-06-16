@@ -272,10 +272,10 @@ func traverseAndRemoveEdges(g *DirectedGraph, nodeMap map[int64]NodeInfo, within
 
 	t := traverse.BreadthFirst{
 		Traverse: func(e graph.Edge) bool { // The dependent / parent node
-			var traversal bool
 			fromId := e.From().ID()
 			toId := e.To().ID()
 			if withinInterval[toId] {
+
 				fromTime, err1 := time.Parse(time.RFC3339, nodeMap[fromId].Timestamp) // The dependent node's time stamp
 				toTime, err2 := time.Parse(time.RFC3339, nodeMap[toId].Timestamp)     // The dependency node's time stamp
 
@@ -283,12 +283,12 @@ func traverseAndRemoveEdges(g *DirectedGraph, nodeMap map[int64]NodeInfo, within
 					panic(err1)
 				}
 
-				if traversal = fromTime.After(toTime); traversal {
+				if fromTime.After(toTime) {
 					connected = append(connected, &e)
 				} // If the dependency was released before the parent node, add this edge to the connected nodes
 			}
 
-			return traversal
+			return true
 		},
 	}
 
@@ -302,9 +302,9 @@ func traverseAndRemoveEdges(g *DirectedGraph, nodeMap map[int64]NodeInfo, within
 			_ = t.Walk(g, n, nil) // Continue walking this subtree until we've visited everything we're allowed to according to Traverse
 			t.Reset()             // Clean up for the next iteration
 			i++
-
-			fmt.Printf("%d / %d subtrees walked \n", i, nodesAmount)
 			fmt.Printf("\u001b[1A \u001b[2K \r") // Clear the last line
+			fmt.Printf("%d / %d subtrees walked \n", i, nodesAmount)
+
 		}
 	}
 
