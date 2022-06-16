@@ -179,7 +179,8 @@ func start() {
 
 			count := generateAndRunInt("Please select the number (n > 0) of highest-ranked packages you wish to see")
 			for i := 0; i < count; i++ {
-				fmt.Printf("The %d-th highest-ranked node (%v) has a betweenness score of %f \n", i, idToNodeInfo[keys[i]], betweenness[keys[i]])
+				normalized := betweenness[keys[i]] / betweenness[keys[0]]
+				fmt.Printf("The %d-th highest-ranked node (%v) has a betweenness score of %f \n", i, idToNodeInfo[keys[i]], normalized)
 			}
 		case 7:
 			fmt.Println("Stopping the program...")
@@ -251,7 +252,8 @@ func findLatestDependenciesOfAPackageBetweenTwotimestamps(graph *simple.Directed
 	beginTime := generateAndRunDatePrompt("Please input the beginning date of the interval (DD-MM-YYYY)")
 	endTime := generateAndRunDatePrompt("Please input the end date of the interval (DD-MM-YYYY)")
 	nodeStringId := generateAndRunPackageNamePrompt("Please select the name and the version of the package", nodeMap)
-	g.FilterGraph(graph, nodeMap, beginTime, endTime)
+	g.FilterNoTraversal(graph, nodeMap, beginTime, endTime)
+	g.LatestNoTraversal(graph, nodeMap)
 	return g.GetLatestTransitiveDependenciesNode(graph, nodeMap, hashMap, nodeStringId)
 }
 
@@ -295,7 +297,8 @@ func generateAndRunDatePrompt(message string) time.Time {
 func pageRankOnFilteredGraph(graph *simple.DirectedGraph, hashMap map[uint64]int64, nodeMap map[int64]g.NodeInfo) map[int64]float64 {
 	beginTime := generateAndRunDatePrompt("Please input the beginning date of the interval (DD-MM-YYYY)")
 	endTime := generateAndRunDatePrompt("Please input the end date of the interval (DD-MM-YYYY)")
-	g.LatestNoTraversal(graph, nodeMap, hashMap, beginTime, endTime)
+	g.FilterNoTraversal(graph, nodeMap, beginTime, endTime)
+	g.LatestNoTraversal(graph, nodeMap)
 	return g.PageRank(graph)
 }
 

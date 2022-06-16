@@ -183,7 +183,17 @@ func VisualizationNodeInfo(iDToNodeInfo map[int64]NodeInfo, graph *simple.Direct
 // TODO: Discuss removing pointers from maps since they are reference types without the need of using * : https://stackoverflow.com/questions/40680981/are-maps-passed-by-value-or-by-reference-in-go
 func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, hashToNodeId map[uint64]int64, nodeInfoMap map[int64]NodeInfo, hashToVersionMap map[uint32][]string, isMaven bool) {
 	// r, _ := regexp.Compile("((?P<open>[\\(\\[])(?P<bothVer>((?P<firstVer>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)(?P<comma1>,)(?P<secondVer1>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?)|((?P<comma2>,)?(?P<secondVer2>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?))(?P<close>[\\)\\]]))|(?P<simplevers>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)")
-	n := len(*inputList)
+	packagesLength := len(*inputList)
+	edgesAmount := 0
+	channel := make(chan int, 2)
+	go func(n int, ch chan int) {
+		for {
+			for i := range ch {
+				fmt.Printf("\u001b[1A \u001b[2K \r") // Clear the last line
+				fmt.Printf("%.2f%% done (%d / %d packages connected to their dependencies)\n", float64(i)/float64(n)*100, i, n)
+			}
+		}
+	}(packagesLength, channel)
 	for id, packageInfo := range *inputList {
 		for version, dependencyInfo := range packageInfo.Versions {
 			for dependencyName, dependencyVersion := range dependencyInfo.Dependencies {
@@ -210,15 +220,16 @@ func CreateEdges(graph *simple.DirectedGraph, inputList *[]PackageInfo, hashToNo
 						// Ensure that we do not create edges to self because some packages do that...
 						if dependencyGoId != packageGoId {
 							graph.SetEdge(GraphEdge{FId: packageGoId, TId: dependencyGoId, g: graph})
+							edgesAmount++
 						}
 
 					}
 				}
 			}
 		}
-		fmt.Printf("\u001b[1A \u001b[2K \r") // Clear the last line
-		fmt.Printf("%.2f%% done (%d / %d packages connected to their dependencies)\n", float32(id)/float32(n)*100, id, n)
+		channel <- id
 	}
+	close(channel)
 }
 
 func addEdge(graphMutex *sync.RWMutex, dependencyName string, v string, hashToNodeId map[uint64]int64, graph *simple.DirectedGraph, packageName string, packageVersion string) {
@@ -647,7 +658,7 @@ func keepSelectedNodes(g *simple.DirectedGraph, removeIDs map[int64]struct{}) {
 	}
 }
 
-func LatestNoTraversal(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, hashMap map[uint64]int64, beginTime, endTime time.Time) {
+func LatestNoTraversal(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo) {
 	length := g.Nodes().Len() / 2
 	newestPackageVersion := make(map[uint32]NodeInfo, length)
 	keepIDs := make(map[int64]struct{}, length)
