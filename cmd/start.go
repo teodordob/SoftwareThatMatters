@@ -146,8 +146,8 @@ func start() {
 			}
 			fmt.Printf("The highest-ranked node (%v) has rank %f \n", idToNodeInfo[mostUsedId], maxRank)
 		case 5:
-			fmt.Println("This should find the most used application(unique)")
-			input := generateAndRunInt("Please input the number of applications desired")
+			fmt.Println("This should find the most used packages(unique)")
+			input := generateAndRunInt("Please input the number of packages desired")
 			pr := pageRankOnFilteredGraph(graph, hashMap, idToNodeInfo)
 			keys := make([]int64, 0, len(pr))
 			for key := range pr {
