@@ -109,6 +109,15 @@ func CreateNameToVersionMap(m *[]PackageInfo) map[string][]string {
 func CreateEdges(graph *DirectedGraph, inputList *[]PackageInfo, hashToNodeId map[uint64]int64, hashToVersionMap map[uint32][]string, isMaven bool) {
 	packagesLength := len(*inputList)
 	edgesAmount := 0
+	channel := make(chan int, 2)
+	go func(n int, ch chan int) {
+		for {
+			for i := range ch {
+				fmt.Printf("\u001b[1A \u001b[2K \r") // Clear the last line
+				fmt.Printf("%.2f%% done (%d / %d packages connected to their dependencies)\n", float64(i)/float64(n)*100, i, n)
+			}
+		}
+	}(packagesLength, channel)
 	for id, packageInfo := range *inputList {
 		for version, dependencyInfo := range packageInfo.Versions {
 			for dependencyName, dependencyVersion := range dependencyInfo.Dependencies {
@@ -146,12 +155,9 @@ func CreateEdges(graph *DirectedGraph, inputList *[]PackageInfo, hashToNodeId ma
 				}
 			}
 		}
-		if id%10000 == 0 {
-			fmt.Printf("\u001b[1A \u001b[2K \r") // Clear the last line
-			fmt.Printf("%.2f%% done (%d / %d packages connected to their dependencies)\n", float32(id)/float32(packagesLength)*100, id, packagesLength)
-		}
-
+		channel <- id
 	}
+	close(channel)
 	fmt.Printf("Nodes: %d, Edges: %d\n", len(hashToNodeId), edgesAmount)
 }
 
