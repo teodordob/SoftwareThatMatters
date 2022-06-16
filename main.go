@@ -11,6 +11,6 @@ import (
 )
 
 func main() {
-	debug.SetGCPercent(5)
+	debug.SetGCPercent(15)
 	cmd.Execute()
 }
