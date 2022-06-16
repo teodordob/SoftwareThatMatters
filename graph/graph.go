@@ -140,7 +140,7 @@ func CreateEdges(graph *customgraph.DirectedGraph, inputList *[]PackageInfo, has
 	// r, _ := regexp.Compile("((?P<open>[\\(\\[])(?P<bothVer>((?P<firstVer>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)(?P<comma1>,)(?P<secondVer1>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?)|((?P<comma2>,)?(?P<secondVer2>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)?))(?P<close>[\\)\\]]))|(?P<simplevers>(0|[1-9]+)(\\.(0|[1-9]+)(\\.(0|[1-9]+))?)?)")
 	n := len(*inputList)
 	numEdges := 0
-	idxchannel := make(chan int, 2)
+	idxchannel := make(chan int, 1000)
 	go func(n int, ch chan int) {
 		for {
 			for i := range ch {

@@ -134,6 +134,7 @@ func start() {
 			fmt.Println("Getting the latest dependencies for packages. This will take a while")
 			t1 := time.Now().Unix()
 			g.FilterNoTraversal(graph, idToNodeInfo, beginTime, endTime)
+			g.LatestNoTraversal(graph, idToNodeInfo, hashMap)
 			t2 := time.Now().Unix()
 			fmt.Printf("Graph filtering took %d seconds\n", t2-t1)
 			fmt.Println("Running PageRank")
