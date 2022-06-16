@@ -147,12 +147,26 @@ func start() {
 			g.FilterNoTraversal(graph, idToNodeInfo, beginTime, endTime)
 			t2 := time.Now().Unix()
 			fmt.Printf("Graph filtering took %d seconds", t2-t1)
+			fmt.Println()
 			fmt.Println("Running PageRank")
 			pr := g.PageRank(graph)
 			keys := make([]int64, 0, len(pr))
-			for k := range pr {
+			aggregated := make(map[string]float64)
+
+			for k, value := range pr {
 				keys = append(keys, k)
+				aggregated[idToNodeInfo[k].Name] += value
 			}
+
+			aggregatedKeys := make([]string, 0, len(aggregated))
+
+			for k := range aggregated {
+				aggregatedKeys = append(aggregatedKeys, k)
+			}
+
+			sort.SliceStable(aggregatedKeys, func(i, j int) bool {
+				return aggregated[aggregatedKeys[i]] > aggregated[aggregatedKeys[j]]
+			})
 
 			sort.SliceStable(keys, func(i, j int) bool {
 				return pr[keys[i]] > pr[keys[j]]
@@ -162,6 +176,12 @@ func start() {
 			for i := 0; i < count; i++ {
 				fmt.Printf("The %d-th highest-ranked node (%v) has rank %f \n", i, idToNodeInfo[keys[i]], pr[keys[i]])
 			}
+
+			fmt.Print("\n---------------------------------------------\n\n")
+			for i := 0; i < count; i++ {
+				fmt.Printf("The %d-th highest-ranked package (%v) has rank %f \n", i, aggregatedKeys[i], aggregated[aggregatedKeys[i]])
+			}
+
 		case 7:
 			fmt.Println("This should find the n most used packages")
 			fmt.Println("Running betweenness algorithm")
