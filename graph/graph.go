@@ -269,6 +269,7 @@ func CreateGraph(inputPath string, isUsingMaven bool) (*customgraph.DirectedGrap
 	fmt.Println("Done!")
 	// TODO: This might cause some issues but for now it saves it quite a lot of memory
 	fmt.Printf("Nodes: %d, Edges: %d\n", numNodes, numEdges)
+	fmt.Println()
 	return graph, hashToNodeId, idToNodeInfo, hashToVersions
 }
 
