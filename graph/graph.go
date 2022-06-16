@@ -292,11 +292,19 @@ func traverseAndRemoveEdges(g *DirectedGraph, nodeMap map[int64]NodeInfo, within
 		},
 	}
 
+	nodesAmount := len(nodeMap)
+
+	i := 0
+
 	for nodes.Next() {
 		n := nodes.Node()
 		if withinInterval[n.ID()] { // We'll only consider traversing this subtree if its root was within the specified time interval
 			_ = t.Walk(g, n, nil) // Continue walking this subtree until we've visited everything we're allowed to according to Traverse
 			t.Reset()             // Clean up for the next iteration
+			i++
+
+			fmt.Printf("%d / %d subtrees walked \n", i, nodesAmount)
+			fmt.Printf("\u001b[1A \u001b[2K \r") // Clear the last line
 		}
 	}
 
