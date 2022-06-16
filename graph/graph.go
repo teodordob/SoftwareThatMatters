@@ -268,7 +268,7 @@ func InInterval(t, begin, end time.Time) bool {
 }
 
 // initializeTraversal is a helper function used to initialize all required auxiliary data structures for the graph traversal
-func initializeTraversal(g *DirectedGraph, nodeMap map[int64]NodeInfo, withinInterval map[int64]bool, beginTime time.Time, endTime time.Time) {
+func initializeTraversal(g *customgraph.DirectedGraph, nodeMap map[int64]NodeInfo, withinInterval map[int64]bool, beginTime time.Time, endTime time.Time) {
 	nodes := g.Nodes()
 	for nodes.Next() { // Initialize withinInterval data structure
 		n := nodes.Node()
@@ -295,7 +295,7 @@ func removeDisconnected(g *customgraph.DirectedGraph, connected []*graph.Edge) {
 }
 
 // This function removes stale edges from the specified graph by doing a DFS with all packages as the root node in O(n^2)
-func traverseAndRemoveEdges(g *DirectedGraph, nodeMap map[int64]NodeInfo, withinInterval map[int64]bool) {
+func traverseAndRemoveEdges(g *customgraph.DirectedGraph, nodeMap map[int64]NodeInfo, withinInterval map[int64]bool) {
 	nodes := g.Nodes()
 	// This keeps track of which edges we've connected
 	connected := make([]*graph.Edge, 0, len(nodeMap)*2)
@@ -306,13 +306,8 @@ func traverseAndRemoveEdges(g *DirectedGraph, nodeMap map[int64]NodeInfo, within
 			fromId := e.From().ID()
 			toId := e.To().ID()
 			if withinInterval[toId] {
-				fromTime, err1 := time.Parse(time.RFC3339, nodeMap[fromId].Timestamp) // The dependent node's time stamp
-				toTime, err2 := time.Parse(time.RFC3339, nodeMap[toId].Timestamp)     // The dependency node's time stamp
-
-				if err1 != nil || err2 != nil {
-					panic(err1)
-				}
-
+				fromTime := nodeMap[fromId].Timestamp // The dependent node's time stamp
+				toTime := nodeMap[toId].Timestamp     // The dependency node's time stamp
 				if traversal = fromTime.After(toTime); traversal {
 					connected = append(connected, &e)
 				} // If the dependency was released before the parent node, add this edge to the connected nodes
@@ -334,7 +329,7 @@ func traverseAndRemoveEdges(g *DirectedGraph, nodeMap map[int64]NodeInfo, within
 
 }
 
-func traverseOneNode(g *DirectedGraph, nodeMap map[int64]NodeInfo, withinInterval map[int64]bool, nodeId int64) {
+func traverseOneNode(g *customgraph.DirectedGraph, nodeMap map[int64]NodeInfo, withinInterval map[int64]bool, nodeId int64) {
 	connected := make([]*graph.Edge, 0, len(nodeMap)*2)
 
 	t := traverse.BreadthFirst{
@@ -343,12 +338,8 @@ func traverseOneNode(g *DirectedGraph, nodeMap map[int64]NodeInfo, withinInterva
 			fromId := e.From().ID()
 			toId := e.To().ID()
 			if withinInterval[toId] {
-				fromTime, err1 := time.Parse(time.RFC3339, nodeMap[fromId].Timestamp) // The dependent node's time stamp
-				toTime, err2 := time.Parse(time.RFC3339, nodeMap[toId].Timestamp)     // The dependency node's time stamp
-
-				if err1 != nil || err2 != nil {
-					panic(err1)
-				}
+				fromTime := nodeMap[fromId].Timestamp // The dependent node's time stamp
+				toTime := nodeMap[toId].Timestamp     // The dependency node's time stamp
 
 				if traversal = fromTime.After(toTime); traversal {
 					connected = append(connected, &e)
