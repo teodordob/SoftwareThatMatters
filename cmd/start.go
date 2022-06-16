@@ -146,7 +146,7 @@ func start() {
 			}
 			fmt.Printf("The highest-ranked node (%v) has rank %f \n", idToNodeInfo[mostUsedId], maxRank)
 		case 5:
-			fmt.Println("This should find the most used packages(unique)")
+			fmt.Println("This should find the most used packages(pagerank)")
 			input := generateAndRunInt("Please input the number of packages desired")
 			pr := pageRankOnFilteredGraph(graph, hashMap, idToNodeInfo)
 			keys := make([]int64, 0, len(pr))
@@ -295,7 +295,7 @@ func generateAndRunDatePrompt(message string) time.Time {
 func pageRankOnFilteredGraph(graph *simple.DirectedGraph, hashMap map[uint64]int64, nodeMap map[int64]g.NodeInfo) map[int64]float64 {
 	beginTime := generateAndRunDatePrompt("Please input the beginning date of the interval (DD-MM-YYYY)")
 	endTime := generateAndRunDatePrompt("Please input the end date of the interval (DD-MM-YYYY)")
-	g.FilterLatestDepsGraph(graph, nodeMap, hashMap, beginTime, endTime)
+	g.LatestNoTraversal(graph, nodeMap, hashMap, beginTime, endTime)
 	return g.PageRank(graph)
 }
 

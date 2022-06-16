@@ -520,7 +520,7 @@ func filterGraph(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, beginTime,
 }
 
 func FilterGraph(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, beginTime, endTime time.Time) {
-	filterGraph(g, nodeMap, beginTime, endTime)
+	FilterNoTraversal(g, nodeMap, beginTime, endTime)
 }
 
 func findNode(hashMap map[uint64]int64, idToNodeInfo map[int64]NodeInfo, stringId string) (int64, bool) {
@@ -645,6 +645,75 @@ func keepSelectedNodes(g *simple.DirectedGraph, removeIDs map[int64]struct{}) {
 	for id := range removeIDs {
 		g.RemoveNode(id)
 	}
+}
+
+func LatestNoTraversal(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, hashMap map[uint64]int64, beginTime, endTime time.Time) {
+	length := g.Nodes().Len() / 2
+	newestPackageVersion := make(map[uint32]NodeInfo, length)
+	keepIDs := make(map[int64]struct{}, length)
+	removeIDs := make(map[int64]struct{}, length)
+	nodes := g.Nodes()
+
+	for nodes.Next() {
+		n := nodes.Node()
+		current := nodeMap[n.ID()]
+		currentDate, _ := time.Parse(time.RFC3339, current.Timestamp)
+		hash := hashPackageName(current.Name)
+
+		if latest, ok := newestPackageVersion[hash]; ok {
+			latestDate, _ := time.Parse(time.RFC3339, latest.Timestamp)
+			if currentDate.After(latestDate) { // If the key exists, and current date is later than the one stored
+				newestPackageVersion[hash] = current // Set to the current package
+			} else if currentDate.Equal(latestDate) { // If the dates are somehow equal, compare version numbers
+				if strings.Compare(current.Version, latest.Version) > 1 {
+					newestPackageVersion[hash] = current
+				}
+			}
+		} else { // If the key doesn't exist yet
+			newestPackageVersion[hash] = current
+		}
+
+	}
+
+	for _, v := range newestPackageVersion {
+		keepIDs[v.id] = struct{}{}
+	}
+
+	for id := range nodeMap {
+		if _, ok := keepIDs[id]; !ok { // If the node id was not on the list, kick it out
+			removeIDs[id] = struct{}{}
+		}
+	}
+
+	keepSelectedNodes(g, removeIDs)
+
+}
+
+func FilterNoTraversal(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, beginTime, endTime time.Time) {
+	nodes := g.Nodes()
+
+	nodesInInterval := make(map[int64]struct{}, len(nodeMap))
+	removeIDs := make(map[int64]struct{}, len(nodeMap))
+
+	for nodes.Next() { // Find nodes that are in the correct time interval
+		n := nodes.Node()
+		id := n.ID()
+		publishTime, err := time.Parse(time.RFC3339, nodeMap[id].Timestamp)
+		if err != nil {
+			panic(err)
+		}
+		if InInterval(publishTime, beginTime, endTime) {
+			nodesInInterval[id] = struct{}{}
+		}
+	}
+
+	for id := range nodeMap {
+		if _, ok := nodesInInterval[id]; !ok { // If the node id was not on the list, kick it out
+			removeIDs[id] = struct{}{}
+		}
+	}
+
+	keepSelectedNodes(g, removeIDs)
 }
 
 // Filter the graph between the two given time stamps and then only keep the latest dependencies
