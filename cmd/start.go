@@ -85,7 +85,7 @@ func start() {
 				"Find all packages between two timestamps",
 				"Find all the possible dependencies of a package",
 				"Find all the possible dependencies of a package between two timestamps",
-				"Find the latest dependencies of a package between two timestamps",
+				"Find the latest dependencies of a package.",
 				"Find the n most used packages by PageRank between two time stamps",
 				"Find the n most used packages by PageRank (without considering time)",
 				"Find the n most used packages by node betweenness",
