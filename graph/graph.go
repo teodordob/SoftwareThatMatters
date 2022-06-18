@@ -508,6 +508,11 @@ func GetLatestTransitiveDependenciesNode(g *customgraph.DirectedGraph, nodeMap m
 }
 
 func keepSelectedNodes(g *customgraph.DirectedGraph, removeIDs map[int64]struct{}) {
+
+	for id := range removeIDs {
+		g.RemoveNode(id)
+	}
+
 	edges := g.Edges()
 	for edges.Next() {
 		e := edges.Edge()
