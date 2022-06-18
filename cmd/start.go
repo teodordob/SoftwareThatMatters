@@ -121,8 +121,8 @@ func start() {
 				fmt.Println(node)
 			}
 		case 3:
-			fmt.Println("This should find the latest dependencies of a package")
-			nodes := findLatestDependenciesOfAPackage(graph, hashMap, idToNodeInfo)
+			fmt.Println("This should find the latest dependencies of a package between two time stamps")
+			nodes := findLatestDependenciesOfAPackageBetweenTwotimestamps(graph, hashMap, idToNodeInfo)
 
 			for _, node := range *nodes {
 				fmt.Println(node)
@@ -269,14 +269,17 @@ func findAllDependenciesOfAPackageBetweenTwoTimestamps(graph *customgraph.Direct
 	beginTime := generateAndRunDatePrompt("Please input the beginning date of the interval (DD-MM-YYYY)")
 	endTime := generateAndRunDatePrompt("Please input the end date of the interval (DD-MM-YYYY)")
 	nodeStringId := generateAndRunPackageNamePrompt("Please select the name and the version of the package", nodeMap)
-	g.FilterNoTraversal(graph, nodeMap, beginTime, endTime)
+	g.FilterGraph(graph, nodeMap, beginTime, endTime)
 	return g.GetTransitiveDependenciesNode(graph, nodeMap, hashMap, nodeStringId)
 }
 
-func findLatestDependenciesOfAPackage(graph *customgraph.DirectedGraph, hashMap map[uint64]int64, nodeMap map[int64]g.NodeInfo) *[]g.NodeInfo {
+func findLatestDependenciesOfAPackageBetweenTwotimestamps(graph *customgraph.DirectedGraph, hashMap map[uint64]int64, nodeMap map[int64]g.NodeInfo) *[]g.NodeInfo {
+	beginTime := generateAndRunDatePrompt("Please input the beginning date of the interval (DD-MM-YYYY)")
+	endTime := generateAndRunDatePrompt("Please input the end date of the interval (DD-MM-YYYY)")
 	nodeStringId := generateAndRunPackageNamePrompt("Please select the name and the version of the package", nodeMap)
+	g.FilterNoTraversal(graph, nodeMap, beginTime, endTime)
 	g.LatestNoTraversal(graph, nodeMap, hashMap)
-	return g.GetTransitiveDependenciesNode(graph, nodeMap, hashMap, nodeStringId)
+	return g.GetLatestTransitiveDependenciesNode(graph, nodeMap, hashMap, nodeStringId)
 }
 
 func generateAndRunNumberPrompt(message string) int {
