@@ -14,6 +14,8 @@ import (
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/encoding/dot"
 	"gonum.org/v1/gonum/graph/network"
+
+	// "gonum.org/v1/gonum/graph/simple"
 	"gonum.org/v1/gonum/graph/traverse"
 )
 
@@ -130,6 +132,57 @@ func VisualizationNodeInfo(iDToNodeInfo map[int64]NodeInfo, graph *customgraph.D
 
 	defer file.Close()
 
+}
+
+func CreateEdgesDebian(graph *customgraph.DirectedGraph, inputList *[]PackageInfo, hashToNodeId map[uint64]int64, nodeInfoMap map[int64]NodeInfo, hashToVersionMap map[uint32][]string, isMaven bool) int {
+	n := len(*inputList)
+	numEdges := 0
+	idxchannel := make(chan int, 1000)
+	go func(n int, ch chan int) {
+		for {
+			for i := range ch {
+				fmt.Printf("\u001b[1A \u001b[2K \r") // Clear the last line
+				fmt.Printf("%.2f%% done (%d / %d packages connected to their dependencies)\n", float64(i)/float64(n)*100, i, n)
+			}
+		}
+	}(n, idxchannel)
+
+	for id, packageInfo := range *inputList {
+		for version, dependencyInfo := range packageInfo.Versions {
+			for dependencyName, dependencyVersion := range dependencyInfo.Dependencies {
+				finaldep := dependencyVersion
+				for _, v := range LookupVersions(dependencyName, hashToVersionMap) {
+					//newVersion, _ := semver2.Parse(v)
+					newVersion := ParseDebianVersion(v)
+
+					if CheckConstraint(finaldep, *newVersion) {
+						dependencyStringId := fmt.Sprintf("%s-%s", dependencyName, v)
+						dependencyGoId := LookupByStringId(dependencyStringId, hashToNodeId)
+
+						packageStringId := fmt.Sprintf("%s-%s", packageInfo.Name, version)
+						packageGoId := LookupByStringId(packageStringId, hashToNodeId)
+
+						// Ensure that we do not create edges to self because some packages do that...
+						if dependencyGoId != packageGoId {
+							packageNode := graph.Node(packageGoId)
+							dependencyNode := graph.Node(dependencyGoId)
+							graph.SetEdge(customgraph.Edge{F: packageNode, T: dependencyNode})
+							numEdges++
+						}
+
+					}
+				}
+			}
+		}
+		idxchannel <- id
+
+		fmt.Printf("\u001b[1A \u001b[2K \r") // Clear the last line
+		fmt.Printf("%.2f%% done (%d / %d packages connected to their dependencies)\n", float32(id)/float32(n)*100, id, n)
+	}
+
+	close(idxchannel)
+
+	return numEdges
 }
 
 // CreateEdges takes a graph, a list of packages and their dependencies, a map of stringIDs to NodeInfo and
@@ -264,7 +317,7 @@ func CreateGraph(inputPath string, isUsingMaven bool) (*customgraph.DirectedGrap
 	hashToVersions := CreateHashedVersionMap(&packagesList)
 	fmt.Println("Creating edges")
 	fmt.Println()
-	numEdges := CreateEdges(graph, &packagesList, hashToNodeId, idToNodeInfo, hashToVersions, isUsingMaven)
+	numEdges := CreateEdgesDebian(graph, &packagesList, hashToNodeId, idToNodeInfo, hashToVersions, isUsingMaven)
 	//CreateEdgesConcurrent(graph, &packagesList, hashToNodeId, idToNodeInfo, nameToVersions, isUsingMaven)
 	fmt.Println("Done!")
 	// TODO: This might cause some issues but for now it saves it quite a lot of memory
@@ -449,7 +502,7 @@ func GetTransitiveDependenciesNode(g *customgraph.DirectedGraph, nodeMap map[int
 		return &result // This function is a no-op if we don't have a correct string id
 	}
 
-	w := traverse.DepthFirst{
+	w := traverse.BreadthFirst{
 		Visit: func(n graph.Node) {
 			result = append(result, nodeMap[n.ID()])
 		},
@@ -527,9 +580,6 @@ func keepSelectedNodes(g *customgraph.DirectedGraph, removeIDs map[int64]struct{
 		}
 	}
 
-	// for id := range removeIDs {
-	// 	g.RemoveNode(id)
-	// }
 }
 
 func LatestNoTraversal(g *customgraph.DirectedGraph, nodeMap map[int64]NodeInfo, hashMap map[uint64]int64) {
@@ -550,10 +600,10 @@ func LatestNoTraversal(g *customgraph.DirectedGraph, nodeMap map[int64]NodeInfo,
 			if currentDate.After(latestDate) { // If the key exists, and current date is later than the one stored
 				newestPackageVersion[hash] = current // Set to the current package
 			} else if currentDate.Equal(latestDate) { // If the dates are somehow equal, compare version numbers
-				currentversion, _ := semver.NewVersion(current.Version)
-				latestVersion, _ := semver.NewVersion(latest.Version)
+				currentversion := ParseDebianVersion(current.Version)
+				latestVersion := ParseDebianVersion(latest.Version)
 
-				if currentversion.GreaterThan(latestVersion) {
+				if CompareVersions(*currentversion, *latestVersion) == 1 {
 					newestPackageVersion[hash] = current
 				}
 			}
@@ -561,6 +611,63 @@ func LatestNoTraversal(g *customgraph.DirectedGraph, nodeMap map[int64]NodeInfo,
 			newestPackageVersion[hash] = current
 		}
 
+	}
+
+	for _, v := range newestPackageVersion {
+		keepIDs[v.id] = struct{}{}
+	}
+
+	for id := range nodeMap {
+		if _, ok := keepIDs[id]; !ok { // If the node id was not on the list, kick it out
+			removeIDs[id] = struct{}{}
+		}
+	}
+
+	keepSelectedNodes(g, removeIDs)
+
+}
+
+func FilterLatestDepsDebianGraph(g *customgraph.DirectedGraph, nodeMap map[int64]NodeInfo, hashMap map[uint64]int64, beginTime, endTime time.Time) {
+	filterGraph(g, nodeMap, beginTime, endTime)
+	length := g.Nodes().Len() / 2
+
+	keepIDs := make(map[int64]struct{}, length)
+	removeIDs := make(map[int64]struct{}, length)
+	newestPackageVersion := make(map[uint32]NodeInfo, length)
+	v := traverse.DepthFirst{
+		Visit: func(n graph.Node) {
+			current := nodeMap[n.ID()]
+			currentDate := current.Timestamp
+			hash := hashPackageName(current.Name)
+
+			if latest, ok := newestPackageVersion[hash]; ok {
+				latestDate := latest.Timestamp
+				if currentDate.After(latestDate) { // If the key exists, and current date is later than the one stored
+					newestPackageVersion[hash] = current // Set to the current package
+				} else if currentDate.Equal(latestDate) { // If the dates are somehow equal, compare version numbers
+					currentversion := ParseDebianVersion(current.Version)
+					latestVersion := ParseDebianVersion(latest.Version)
+
+					if CompareVersions(*currentversion, *latestVersion) == 1 {
+						newestPackageVersion[hash] = current
+					}
+				}
+			} else { // If the key doesn't exist yet
+				newestPackageVersion[hash] = current
+			}
+		},
+	}
+	nodesAmount := len(hashMap)
+	nodes := g.Nodes()
+
+	i := 0
+	for nodes.Next() {
+		n := nodes.Node()
+		_ = v.Walk(g, n, nil)
+		v.Reset()
+		i++
+		fmt.Printf("\u001b[1A \u001b[2K \r") // Clear the last line
+		fmt.Printf("%d / %d subtrees walked \n", i, nodesAmount)
 	}
 
 	for _, v := range newestPackageVersion {
