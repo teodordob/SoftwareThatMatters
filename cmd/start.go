@@ -66,7 +66,7 @@ func start() {
 	}
 	err = survey.AskOne(usingMavenPrompt, &isUsingMaven)
 
-	fmt.Println("Creating the graph. This make take a while!")
+	fmt.Println("Creating the graph. This may take a while!")
 	if err != nil {
 		panic(err)
 	}
