@@ -96,7 +96,9 @@ func start() {
 				"Find the most used package",
 				"Find the most used application",
 				"Find the xth most used applications",
-				"Find the xth most used applications(unique)",
+				"Find the xth most used applications(unique)FIlterNoTraversal",
+				"Find latest dependencies of a package",
+				"Find the n nodes with the highest betweenness",
 				"Quit",
 			},
 		}
@@ -199,6 +201,33 @@ func start() {
 				}
 			}
 		case 8:
+			fmt.Println("This should find the latest dependencies of a package (resolve)")
+			nodes := findLatestDependenciesOfAPackage(graph, hashMap, idToNodeInfo)
+			for _, node := range *nodes {
+				fmt.Println(node)
+			}
+		case 9:
+			fmt.Println("This should find the n most used packages")
+			fmt.Println("Running betweenness algorithm")
+			betweenness := g.Betweenness(graph)
+			keys := make([]int64, 0, len(betweenness))
+			for k := range betweenness {
+				keys = append(keys, k)
+			}
+
+			sort.SliceStable(keys, func(i, j int) bool {
+				return betweenness[keys[i]] > betweenness[keys[j]]
+			})
+
+			count := generateAndRunInt("Please select the number (n > 0) of highest-ranked packages you wish to see")
+			for i := 0; i < count; i++ {
+				if idToNodeInfo[keys[i]].IsApplication {
+					fmt.Printf("The %d-th highest-ranked node (%v) has a betweenness score of %f \n", i, idToNodeInfo[keys[i]], betweenness[keys[i]])
+				} else {
+					i--
+				}
+			}
+		case 10:
 			fmt.Println("Stopping the program...")
 			stop = true
 		}
@@ -275,7 +304,8 @@ func findLatestDependenciesOfAPackageBetweenTwotimestamps(graph *simple.Directed
 func pageRankOnFilteredGraph(graph *simple.DirectedGraph, hashMap map[uint64]int64, nodeMap map[int64]g.NodeInfo) map[int64]float64 {
 	beginTime := generateAndRunDatePrompt("Please input the beginning date of the interval (DD-MM-YYYY)")
 	endTime := generateAndRunDatePrompt("Please input the end date of the interval (DD-MM-YYYY)")
-	g.FilterLatestDepsDebianGraph(graph, nodeMap, hashMap, beginTime, endTime)
+	g.FilterNoTraversal(graph, nodeMap, beginTime, endTime)
+	g.LatestNoTraversal(graph, nodeMap)
 	return g.PageRank(graph)
 }
 
@@ -338,6 +368,11 @@ func generateAndRunPackageNamePrompt(message string, stringIDToNodeInfo map[int6
 	}
 
 	return packageID
+}
+
+func findLatestDependenciesOfAPackage(graph *simple.DirectedGraph, hashMap map[uint64]int64, nodeMap map[int64]g.NodeInfo) *[]g.NodeInfo {
+	nodeStringId := generateAndRunPackageNamePrompt("Please select the name and the version of the package", nodeMap)
+	return g.GetLatestTransitiveDependenciesNode(graph, nodeMap, hashMap, nodeStringId)
 }
 
 func generateAndRunInt(message string) int {

@@ -494,6 +494,76 @@ func initializeTraversal(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, co
 		},
 	}
 }
+func FilterNoTraversal(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo, beginTime, endTime time.Time) {
+	nodes := g.Nodes()
+
+	nodesInInterval := make(map[int64]struct{}, len(nodeMap))
+	removeIDs := make(map[int64]struct{}, len(nodeMap))
+
+	for nodes.Next() { // Find nodes that are in the correct time interval
+		n := nodes.Node()
+		id := n.ID()
+		publishTime, err := time.Parse(time.RFC3339, nodeMap[id].Timestamp)
+		if err != nil {
+			panic(err)
+		}
+		if InInterval(publishTime, beginTime, endTime) {
+			nodesInInterval[id] = struct{}{}
+		}
+	}
+
+	for id := range nodeMap {
+		if _, ok := nodesInInterval[id]; !ok { // If the node id was not on the list, kick it out
+			removeIDs[id] = struct{}{}
+		}
+	}
+
+	keepSelectedNodes(g, removeIDs)
+}
+
+func LatestNoTraversal(g *simple.DirectedGraph, nodeMap map[int64]NodeInfo) {
+	length := g.Nodes().Len() / 2
+	newestPackageVersion := make(map[uint32]NodeInfo, length)
+	keepIDs := make(map[int64]struct{}, length)
+	removeIDs := make(map[int64]struct{}, length)
+	nodes := g.Nodes()
+
+	for nodes.Next() {
+		n := nodes.Node()
+		current := nodeMap[n.ID()]
+		currentDate, _ := time.Parse(time.RFC3339, current.Timestamp)
+		hash := hashPackageName(current.Name)
+
+		if latest, ok := newestPackageVersion[hash]; ok {
+			latestDate, _ := time.Parse(time.RFC3339, latest.Timestamp)
+			if currentDate.After(latestDate) { // If the key exists, and current date is later than the one stored
+				newestPackageVersion[hash] = current // Set to the current package
+			} else if currentDate.Equal(latestDate) { // If the dates are somehow equal, compare version numbers
+				currentversion := ParseDebianVersion(current.Version)
+				latestVersion := ParseDebianVersion(latest.Version)
+				if CompareVersions(*currentversion, *latestVersion) == 1 {
+					newestPackageVersion[hash] = current
+				}
+			}
+		} else { // If the key doesn't exist yet
+			newestPackageVersion[hash] = current
+		}
+
+	}
+
+	for _, v := range newestPackageVersion {
+		keepIDs[v.id] = struct{}{}
+	}
+
+	for id := range nodeMap {
+		if _, ok := keepIDs[id]; !ok { // If the node id was not on the list, kick it out
+			removeIDs[id] = struct{}{}
+		}
+	}
+
+	keepSelectedNodes(g, removeIDs)
+
+}
 
 func removeDisconnected(g *simple.DirectedGraph, connected []*graph.Edge) {
 	edges := g.Edges()
@@ -586,7 +656,7 @@ func GetTransitiveDependenciesNode(g *simple.DirectedGraph, nodeMap map[int64]No
 		return &result // This function is a no-op if we don't have a correct string id
 	}
 
-	w := traverse.DepthFirst{
+	w := traverse.BreadthFirst{
 		Visit: func(n graph.Node) {
 			result = append(result, nodeMap[n.ID()])
 		},
@@ -617,7 +687,6 @@ func GetLatestTransitiveDependenciesNode(g *simple.DirectedGraph, nodeMap map[in
 		if current.id == rootNode.id {
 			continue
 		}
-
 		hash := hashPackageName(current.Name)
 		currentDate, err := time.Parse(time.RFC3339, current.Timestamp)
 		if err != nil {
@@ -631,16 +700,16 @@ func GetLatestTransitiveDependenciesNode(g *simple.DirectedGraph, nodeMap map[in
 			} else if currentDate.After(latestDate) { // If the key exists, and current date is later than the one stored
 				newestPackageVersion[hash] = current // Set to the current package
 			} else if currentDate.Equal(latestDate) { // If the dates are somehow equal, compare version numbers
-				currentversion, _ := semver.NewVersion(current.Version)
-				latestVersion, _ := semver.NewVersion(latest.Version)
-
-				if currentversion.GreaterThan(latestVersion) {
+				currentversion := ParseDebianVersion(current.Version)
+				latestVersion := ParseDebianVersion(latest.Version)
+				if CompareVersions(*currentversion, *latestVersion) == 1 {
 					newestPackageVersion[hash] = current
 				}
 			}
 		} else { // If the key doesn't exist yet
 			newestPackageVersion[hash] = current
 		}
+
 	}
 
 	for _, v := range newestPackageVersion { // Add all latest package versions to the result
@@ -789,4 +858,9 @@ func FilterLatestDepsDebianGraph(g *simple.DirectedGraph, nodeMap map[int64]Node
 func PageRank(graph *simple.DirectedGraph) map[int64]float64 {
 	pr := network.PageRankSparse(graph, 0.85, 0.01)
 	return pr
+}
+
+func Betweenness(graph *simple.DirectedGraph) map[int64]float64 {
+	betweenness := network.Betweenness(graph)
+	return betweenness
 }

@@ -23,7 +23,8 @@ func main() {
 
 	// wg.Add(1)
 
-	//graph1, _, _, _ := graph.CreateGraph("data/input/sample5.json", false)
+	//graph1, _, _, _ := graph.CreateGraph("data/input/debian.json", false)
+	//graph.Visualization(graph1, "graph")
 	//fmt.Println(graph1)
 	// pr := graph.PageRank(graph1)
 	// maxRank := 0.0
